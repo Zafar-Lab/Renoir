@@ -1,6 +1,6 @@
-# RENOIR
+# Renoir
 
-RENOIR is an information-theory-based scoring metric that delineates spatial communication domains that are cell-type, ligand, and target specific. It also identifies spatially enriched ligand-target gene sets and characterizes domain-specific activities between ligands and targets.
+Renoir is an information-theory-based scoring metric that delineates spatial communication domains that are cell-type, ligand, and target specific. It also identifies spatially enriched ligand-target gene sets and characterizes domain-specific activities between ligands and targets.
 
 <p align="center">
 <img src="https://github.com/narein97/Renoir/blob/main/images/Overview.png" alt="Overview of RENOIR" width="600"/>

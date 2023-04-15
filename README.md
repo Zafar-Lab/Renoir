@@ -7,7 +7,7 @@ Renoir is an information-theory-based scoring metric that delineates spatial com
 </p>
 
 ### Requirements
-**Note**: All requirements are provided in the renoir.yml file. Specific libraries required for the neighborhood score computation and downstream tasks are as follows,
+**Note**: All requirements are provided in the renoir.yml file. Few (not all) important libraries required for the neighborhood score computation and downstream tasks are as follows,
 
 - scanpy (1.9.1)
 - numpy (1.21.6)
@@ -37,44 +37,35 @@ import anndata
 import pickle
 ```
 
-**Load in spatial transcriptomics and corresponding single cell data**
+**Read in ST and SC data with annotated celltype**
 
 ```
-#Load in spatial transcriptomics data
-ST = sc.read_visium(path_to_visium_data, count_file=count_file.h5, library_id = 'custom')
-
-#Load in celltype annotated single cell data
-SC = anndata.read_h5ad(path_to_scRNA-seq_h5ad.h5ad)
+ST = sc.read_visium(path/to/data_folder, count_file=filename.h5, library_id = 'custom')
+SC = anndata.read_h5ad(path/to/scRNA.h5ad)
 ```
 
-**Load in list of ligand and target pairs to generate neighbourhood scores for**
+**Read in ligand and targets you would like to work with**
 
 ```
-#Get ligand-target pairs you would like to work with
-ligand_target = pd.read_csv(path_to_ligand_target_list)
-ligands = ligand_target['ligand'].tolist()
-targets = ligand_target['target'].tolist()
-
-#Get list of unique, indexed ligands and targets and ligand-target pairs
-ligand_target_index, ligand_target_pairs = get_ligand_target(ligands, targets, ST, SC)
-ligand_target_list = list(ligand_target_index.keys())
+pairs = pd.read_csv(path/to/ltpairs)
+ligands = pairs['ligand']
+targets = pairs['target']
 ```
 
-**Load in estimated cell type proportions and gene-cell type specific mRNA abundance**
+**Get list of celltypes and estimated celltype proportions**
 
 ```
-#Get list of celltypes and estimated celltype proportions and mRNA abundance values
-celltype_proportions = pd.read_csv(path_to_celltype_abundance)
-celltype_proportions['sum']=celltype_proportions.sum(axis=1)
-celltype_proportions=celltype_proportions[celltype_proportions.columns].div(celltype_proportions['sum'], axis=0)
-celltype_proportions=celltype_proportions.drop('sum',axis=1)
+celltype_proportions = pd.read_csv(path/to/celltype_proportion.csv)
 celltypes = list(celltype_proportions.columns)
-celltype_proportions = celltype_proportions.to_numpy()
+```
 
-#Read in mRNA abundance values generated from cell2location
-expins = pickle.load(open(path_to_computed_mRNA_abundance,'rb'))
+**Read in mRNA abundance values generated from cell2location**
+
+```
+expins = pickle.load(cell2location/mRNA_abundance/gene_celltype_spot,'rb'))
+genes = list(expins.keys())
 expins_new = []
-for gene in ligand_target_list:
+for gene in expins.keys():
     expins_new.append(expins[gene].to_numpy())
 expins = np.array(expins_new)
 ```
@@ -83,20 +74,24 @@ expins = np.array(expins_new)
 > 
 > `Renoir.compute_mRNA_abundance(model, genes)` 
 > 
-> where model is the cell2location model used to estimate cell type abundance values and genes are the list of genes you wish to calculate the mRNA abundance values for.
+> where model is the cell2location model used to estimate cell type abundance values and genes are the list of genes you wish to calculate the mRNA abundance values for. This should only be considered if cell2location v0.6/v0.5 was utilized to estimate cell type abundance values.
 
-**Compute neighbourhood scores for the selected set of ligand-target pairs**
+**Compute neighborhood from ST data**
 
 ```
-#Compute graph for ST data
-graph = create_graph(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology='visium')
+graph = neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology='visium')
+```
 
-#Compute ECS and ISM values
-ISM_result, ECS_result = ISM_PEM(SC, expins, ligand_target_list, ligand_target_pairs, celltypes, celltype_proportions)
-ECS_result = ECS_result[gene_indices]
+**Get list of unique ligands, targets and ligand-target pairs**
 
-#Get neighborhood scores
-neighborhood_scores = get_neighborhood_score(ligand_target_pairs, graph, ECS_result, ISM_result)
+```
+ligand_target_index, ligand_target_pairs, ST_nonzero = get_ligand_target(ligands, targets, ST, SC, genes)
+```
+
+**Get neighborhood scores**
+
+```
+neighborhood_scores = compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes)
 ```
 
 ### Documentation

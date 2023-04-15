@@ -7,18 +7,7 @@ Renoir is an information-theory-based scoring metric that delineates spatial com
 </p>
 
 ### Requirements
-**Note**: All requirements are provided in the renoir.yml file. Few (not all) important libraries required for the neighborhood score computation and downstream tasks are as follows,
-
-- scanpy (1.9.1)
-- numpy (1.21.6)
-- numba (0.56.4)
-- pandas (1.2.5)
-- scipy (1.7.1)
-- hdbscan (0.8.28)
-- dynamictreecut (0.1.1)
-- sklearn (0.24.2)
-- seaborn (0.11.1)
-- matplotlib (0.11.7)
+All requirements are provided in the renoir.yml file. It is recommended to utilize the same versions as provided in renoir.yml.
 
 ### Installation
 **Note**: Installation does not include cell2location. Please install cell2location separately.
@@ -79,19 +68,19 @@ expins = np.array(expins_new)
 **Compute neighborhood from ST data**
 
 ```
-graph = neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology='visium')
+graph = Renoir.neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology='visium')
 ```
 
 **Get list of unique ligands, targets and ligand-target pairs**
 
 ```
-ligand_target_index, ligand_target_pairs, ST_nonzero = get_ligand_target(ligands, targets, ST, SC, genes)
+ligand_target_index, ligand_target_pairs, ST_nonzero = Renoir.get_ligand_target(ligands, targets, ST, SC, genes)
 ```
 
 **Get neighborhood scores**
 
 ```
-neighborhood_scores = compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes)
+neighborhood_scores = Renoir.compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes)
 ```
 
 ### Documentation

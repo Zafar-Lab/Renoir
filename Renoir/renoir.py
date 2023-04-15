@@ -1,32 +1,35 @@
-import scanpy as sc
-import numpy as np
-import pandas as pd
+import anndata
 import math
-import multiprocessing as mp
+import numpy as np
 from numba import njit, prange
-import time
+import pandas as pd
 
 
 #Get unique set of ligands and targets and indexed ligand target pairs
-#Returns: dict: {ligands and targets:index}; list: ligand x target; nonzero ST positions
-def get_ligand_target(ligands, targets, ST, SC):
+#Returns: dict: {ligands and targets:index}; array: ligand x target; nonzero ST positions
+def get_ligand_target(ligands, targets, ST, SC, expins_genes):
     SC_copy = SC.copy()
     ST_copy = ST.copy()
-    #sc.pp.filter_cells(ST_copy, min_genes=1)
-    #sc.pp.filter_genes(ST_copy, min_cells=1)
-    #sc.pp.filter_cells(SC_copy, min_genes=1)
-    #sc.pp.filter_genes(SC_copy, min_cells=1)
     if len(ligands) != len(targets):
         raise Exception("ERROR: No. of ligands and targets should be equal")
+    
     ligands_and_targets = []
-    for gene in ligands+targets:
-        if gene not in ligands_and_targets and gene in SC.var_names and gene in ST.var_names:
+    ligands_subset = []
+    targets_subset = []
+
+    for index in range(len(ligands)):
+        if (ligands[index] in SC_copy.var_names and ligands[index] in ST_copy.var_names and ligands[index] in expins_genes) and (targets[index] in SC_copy.var_names and targets[index] in ST_copy.var_names and targets[index] in expins_genes):
+            ligands_subset.append(ligands[index])
+            targets_subset.append(targets[index])
+    
+    for gene in ligands_subset+targets_subset:
+        if gene not in ligands_and_targets:
             ligands_and_targets.append(gene)
     ligands_and_targets = dict(zip(ligands_and_targets, range(len(ligands_and_targets))))
     ligand_target_pairs = []
-    for index in range(len(ligands)):
-        ligand_index = ligands_and_targets[ligands[index]]
-        target_index = ligands_and_targets[targets[index]]
+    for index in range(len(ligands_subset)):
+        ligand_index = ligands_and_targets[ligands_subset[index]]
+        target_index = ligands_and_targets[targets_subset[index]]
         if(ligand_index > len(ligand_target_pairs)-1):
             ligand_target_pairs.append([])
         if target_index not in ligand_target_pairs[ligand_index]:
@@ -63,6 +66,16 @@ def create_graph(X_coord, Y_coord, technology, radius=0):
             graph[spot].append(-1)
 
     return np.array(graph)
+
+#Wrapper function for create_graph
+#Returns: graph: row index = spot index; graph[row index] = list of spot neighbors
+def neighborhood(X_coord, Y_coord, technology, radius):
+    technologies=['visium','slideseq']
+    if technology in technologies:
+        graph = create_graph(X_coord, Y_coord, technology, radius)
+        return graph
+    else:
+        raise Exception("technology currently not supported.")
 
 
 #Calculate miller-madow entropy
@@ -182,16 +195,6 @@ def ISM_PEM(SC, expins, ligand_target_list, ligand_target_pairs, celltypes, cell
                 scdata[gene][celltype_start_index[celltype] + index] = 1e-20
     H = fasthist(len(ligand_target_list), len(celltypes), celltype_start_index, scdata)
     ISM_result = ISM(ligand_target_pairs, H, len(celltypes), celltype_start_index, celltype_proportions, scdata)
-
-    '''
-    with mp.Manager() as manager:
-        with manager.Pool(n_proc) as pool_l:
-            with manager.Pool(n_proc) as pool_t:
-                start = time.time()
-                ISM = pool_l.starmap(ISM_wrapper, [(ligand, ligand_target_pairs, H, len(celltypes), celltype_proportions, scdata, bins, pool_t) for ligand in range(len(ligand_target_pairs))])
-                end = time.time()
-                print('Time taken: ',(end-start))
-    '''
     ECS_result = PEM(expins, celltype_proportions)
     return ISM_result, ECS_result
 
@@ -268,13 +271,55 @@ def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero):
                         ISM_lt = (ISM[ligand][target_index][spot]+ISM[ligand][target_index][spot])/2
                         cumsum = ((PEM_lt - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt - min_ISM)/(max_ISM - min_ISM))
                     for neighbor in graph[spot]:
-                        if neighbor!=-1 and neighbor!=spot and ST_nonzero[ligand][spot] and ST_nonzero[target][neighbor]:
-                            PEM_lt1 = (PEM[ligand][spot]+PEM[target][neighbor])/2
-                            PEM_lt2 = (PEM[ligand][neighbor]+PEM[target][spot])/2
-                            ISM_lt1 = (ISM[ligand][target_index][spot]+ISM[ligand][target_index][neighbor])/2
-                            ISM_lt2 = (ISM[ligand][target_index][neighbor]+ISM[ligand][target_index][spot])/2
-                            cumsum += ((PEM_lt1 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt1 - min_ISM)/(max_ISM - min_ISM))
-                            cumsum += ((PEM_lt2 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt2 - min_ISM)/(max_ISM - min_ISM))
+                        if neighbor!=-1 and neighbor!=spot:
+                            if ST_nonzero[ligand][spot] and ST_nonzero[target][neighbor]:
+                                PEM_lt1 = (PEM[ligand][spot]+PEM[target][neighbor])/2
+                                ISM_lt1 = (ISM[ligand][target_index][spot]+ISM[ligand][target_index][neighbor])/2
+                                cumsum += ((PEM_lt1 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt1 - min_ISM)/(max_ISM - min_ISM))
+                            if ST_nonzero[ligand][neighbor] and ST_nonzero[target][spot]:
+                                PEM_lt2 = (PEM[ligand][neighbor]+PEM[target][spot])/2
+                                ISM_lt2 = (ISM[ligand][target_index][neighbor]+ISM[ligand][target_index][spot])/2
+                                cumsum += ((PEM_lt2 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt2 - min_ISM)/(max_ISM - min_ISM))
                     neighborhood_scores[ligand][target_index][spot] = cumsum
     return neighborhood_scores
+
+#Wrapper function for get neighborhood scores
+#Return neighborhood scores: array of size ligand_target_pair vs spots OR anndata object
+def compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes, return_adata=True):
+    #Get gene indices
+    gene_indices = []
+    ligand_target_list = list(ligand_target_index.keys())
+    for x in ligand_target_list:
+        gene_indices.append(genes.index(x))
+    #Compute ECS and ISM values
+    ISM_result, ECS_result = ISM_PEM(SC, expins, list(ligand_target_index.keys()), ligand_target_pairs, celltypes, celltype_proportions)
+    ECS_result = ECS_result[gene_indices]
+    neighborhood_scores = get_neighborhood_score(ligand_target_pairs, graph, ECS_result, ISM_result, ST_nonzero)
+    if return_adata:
+        adata = toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list)
+        return adata
+    else:
+        return neighborhood_scores
+
+
+#Convert numpy neighborhood scores to anndata
+#Return anndata object with pairs vs spots
+def toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list):
+    dataframe = []
+    pairs = []
+    for lig_index in range(ligand_target_pairs.shape[0]):
+        for tar_index in range(ligand_target_pairs.shape[1]):
+            if neighborhood_scores[lig_index][tar_index].sum() > 0:
+                target = ligand_target_pairs[lig_index][tar_index]
+                pairs.append(ligand_target_list[lig_index]+':'+ligand_target_list[target])
+                dataframe.append(list(neighborhood_scores[lig_index][tar_index]))
+    dataframe = pd.DataFrame(dataframe).transpose()
+    dataframe.columns = pairs
+    dataframe.index = ST.obs_names
+    adata = anndata.AnnData(dataframe)
+    adata.obs = ST.obs
+    adata.var['gene_ids'] = pairs
+    adata.uns = ST.uns
+    adata.obsm = ST.obsm
+    return adata
 

@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Breast Cancer tutorial &#8212; Renoir 0.5.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Renoir API" href="../api.html" />
+    <link rel="prev" title="Installation and Basic usage" href="../install_usage.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="Breast-Cancer-tutorial">
+<h1>Breast Cancer tutorial<a class="headerlink" href="#Breast-Cancer-tutorial" title="Permalink to this heading">¶</a></h1>
+<p>This tutorial demonstrates the application of Renoir on a Triple Negative Breast Cancer visium data available <a class="reference external" href="https://www.nature.com/articles/s41588-021-00911-1#data-availability">here</a>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">Renoir</span>
+<span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">anndata</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.figsize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<section id="Generate-neighborhood-scores">
+<h2>Generate neighborhood scores<a class="headerlink" href="#Generate-neighborhood-scores" title="Permalink to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#Read in ST and SC data with annotated celltype</span>
+
+<span class="n">ST</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_visium</span><span class="p">(</span><span class="s1">&#39;path/to/data_folder&#39;</span><span class="p">,</span> <span class="n">count_file</span><span class="o">=</span><span class="s1">&#39;filename.h5&#39;</span><span class="p">,</span> <span class="n">library_id</span> <span class="o">=</span> <span class="s1">&#39;custom&#39;</span><span class="p">)</span>
+<span class="n">SC</span> <span class="o">=</span> <span class="n">anndata</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s1">&#39;path/to/scRNA.h5ad&#39;</span><span class="p">)</span>
+
+<span class="c1">#Read in ligand and targets you would like to work with</span>
+
+<span class="n">pairs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;path/to/ltpairs&#39;</span><span class="p">)</span>
+<span class="n">ligands</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">[</span><span class="s1">&#39;ligand&#39;</span><span class="p">]</span>
+<span class="n">targets</span> <span class="o">=</span> <span class="n">pairs</span><span class="p">[</span><span class="s1">&#39;target&#39;</span><span class="p">]</span>
+
+
+<span class="c1">#Get list of celltypes and estimated celltype proportions**</span>
+
+<span class="n">celltype_proportions</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;path/to/celltype_proportion.csv&#39;</span><span class="p">)</span>
+<span class="n">celltypes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">celltype_proportions</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+
+<span class="c1">#Read in mRNA abundance values generated from cell2location</span>
+<span class="n">expins</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;cell2location/mRNA_abundance/gene_celltype_spot&#39;</span><span class="p">,</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span>
+<span class="n">genes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">expins</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+<span class="n">expins_new</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">gene</span> <span class="ow">in</span> <span class="n">expins</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+    <span class="n">expins_new</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">expins</span><span class="p">[</span><span class="n">gene</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+<span class="n">expins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">expins_new</span><span class="p">)</span>
+
+<span class="c1">#Compute neighborhood from ST data</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">neighborhood</span><span class="p">(</span><span class="n">ST</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;array_row&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">ST</span><span class="o">.</span><span class="n">obs</span><span class="p">[</span><span class="s1">&#39;array_col&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="n">technology</span><span class="o">=</span><span class="s1">&#39;visium&#39;</span><span class="p">)</span>
+
+<span class="c1">#Get list of unique ligands, targets and ligand-target pairs</span>
+<span class="n">ligand_target_index</span><span class="p">,</span> <span class="n">ligand_target_pairs</span><span class="p">,</span> <span class="n">ST_nonzero</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">get_ligand_target</span><span class="p">(</span><span class="n">ligands</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">ST</span><span class="p">,</span> <span class="n">SC</span><span class="p">,</span> <span class="n">genes</span><span class="p">)</span>
+
+<span class="c1">#Get neighborhood scores</span>
+<span class="n">neighborhood_scores</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">compute_neighborhood_scores</span><span class="p">(</span><span class="n">SC</span><span class="p">,</span> <span class="n">ST</span><span class="p">,</span> <span class="n">celltypes</span><span class="p">,</span> <span class="n">celltype_proportions</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">ligand_target_index</span><span class="p">,</span> <span class="n">ligand_target_pairs</span><span class="p">,</span> <span class="n">ST_nonzero</span><span class="p">,</span> <span class="n">expins</span><span class="p">,</span> <span class="n">genes</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">neighborhood_scores</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 1322 × 1683
+    obs: &#39;in_tissue&#39;, &#39;array_row&#39;, &#39;array_col&#39;
+    var: &#39;gene_ids&#39;
+    uns: &#39;spatial&#39;
+    obsm: &#39;spatial&#39;
+</pre></div></div>
+</div>
+</section>
+<section id="Downstream-tasks">
+<h2>Downstream tasks<a class="headerlink" href="#Downstream-tasks" title="Permalink to this heading">¶</a></h2>
+<p>The generated neighborhood scores can be utilized for a variety of downstream analysis. First, the spatial map of specific ligand-target activity can be viewed as so,</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">spatial</span><span class="p">(</span><span class="n">neighborhood_scores</span><span class="p">,</span> <span class="n">img_key</span><span class="o">=</span><span class="s2">&quot;hires&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ANXA1:CXCL2&quot;</span><span class="p">],</span> <span class="n">size</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">alpha_img</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_BC_tutorial_6_0.png" src="../_images/notebooks_BC_tutorial_6_0.png" />
+</div>
+</div>
+<p>Specific pathway sets and De novo ligand-target clusters can be generated using the <code class="docutils literal notranslate"><span class="pre">create_cluster</span></code> function</p>
+<blockquote>
+<div><p><strong>Note</strong>: pathways are to be provided in the format of a pandas dataframe with columns <em>‘gs_name’</em>, <em>‘gene_symbol’</em></p>
+</div></blockquote>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#Read in msgidb pathways</span>
+<span class="n">msigh</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">get_msig</span><span class="p">(</span><span class="s1">&#39;custom&#39;</span><span class="p">,</span><span class="n">path</span><span class="o">=</span><span class="s1">&#39;/home/narein/msig_human_WP_H_KEGG.csv&#39;</span><span class="p">)</span>
+<span class="c1">#Generate ligand-target sets for each pathway and/or De novo cluster</span>
+<span class="n">pathways</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">create_cluster</span><span class="p">(</span><span class="n">neighborhood_scores</span><span class="p">,</span> <span class="n">msigh</span><span class="p">,</span> <span class="n">pathway_path</span><span class="o">=</span><span class="s1">&#39;/home/narein/final_pathways.csv&#39;</span><span class="p">,</span> <span class="n">use_pathway</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">pathways</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+dict_keys([&#39;HALLMARK_IL2_STAT5_SIGNALING&#39;, &#39;HALLMARK_IL6_JAK_STAT3_SIGNALING&#39;, &#39;HALLMARK_KRAS_SIGNALING_UP&#39;, &#39;HALLMARK_TNFA_SIGNALING_VIA_NFKB&#39;, &#39;KEGG_JAK_STAT_SIGNALING_PATHWAY&#39;, &#39;KEGG_MAPK_SIGNALING_PATHWAY&#39;, &#39;KEGG_NEUROTROPHIN_SIGNALING_PATHWAY&#39;, &#39;KEGG_TGF_BETA_SIGNALING_PATHWAY&#39;, &#39;KEGG_WNT_SIGNALING_PATHWAY&#39;, &#39;WP_ERBB_SIGNALING_PATHWAY&#39;, &#39;WP_MAPK_SIGNALING_PATHWAY&#39;, &#39;WP_PI3KAKT_SIGNALING_PATHWAY&#39;, &#39;WP_TGFBETA_RECEPTOR_SIGNALING&#39;, &#39;WP_TGFBETA_SIGNALING_PATHWAY&#39;, &#39;WP_VEGFAVEGFR2_SIGNALING_PATHWAY&#39;, &#39;WP_WNT_SIGNALING&#39;])
+</pre></div></div>
+</div>
+<p>Communication domains and the spatial map of pathway activities can be generated using the neighborhood scores as so,</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">neighbscore_copy</span><span class="p">,</span> <span class="n">pcs</span> <span class="o">=</span> <span class="n">Renoir</span><span class="o">.</span><span class="n">downstream_analysis</span><span class="p">(</span><span class="n">neighborhood_scores</span><span class="p">,</span> <span class="n">ltpair_clusters</span><span class="o">=</span><span class="n">pathways</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">n_markers</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">n_top</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">pdf_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_cluster</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_pcs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The communication domains and pathway activity can be visualized as follows,</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[35]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">spatial</span><span class="p">(</span><span class="n">neighbscore_copy</span><span class="p">,</span> <span class="n">img_key</span><span class="o">=</span><span class="s2">&quot;hires&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;leiden&quot;</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">alpha_img</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_BC_tutorial_12_0.png" src="../_images/notebooks_BC_tutorial_12_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">spatial</span><span class="p">(</span><span class="n">pcs</span><span class="p">,</span> <span class="n">img_key</span><span class="o">=</span><span class="s2">&quot;hires&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;HALLMARK_IL2_STAT5_SIGNALING&quot;</span><span class="p">],</span> <span class="n">size</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">alpha_img</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;YlGnBu_r&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_BC_tutorial_13_0.png" src="../_images/notebooks_BC_tutorial_13_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Renoir</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Renoir</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install_usage.html">Installation and Basic usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Breast Cancer tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#Generate-neighborhood-scores">Generate neighborhood scores</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Downstream-tasks">Downstream tasks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">Renoir API</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../install_usage.html" title="previous chapter">Installation and Basic usage</a></li>
+      <li>Next: <a href="../api.html" title="next chapter">Renoir API</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Narein Rao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/notebooks/BC_tutorial.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

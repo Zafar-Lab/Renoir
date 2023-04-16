@@ -8,6 +8,24 @@ import pandas as pd
 #Get unique set of ligands and targets and indexed ligand target pairs
 #Returns: dict: {ligands and targets:index}; array: ligand x target; nonzero ST positions
 def get_ligand_target(ligands, targets, ST, SC, expins_genes):
+    """Get unique set of ligands and targets and indexed ligand target pairs.
+
+    :param ligands: List of ligands as they occur with every corresponding target
+    :type ligands: list
+    :param targets: _List of targets as they occur with every corresponding ligand
+    :type targets: list
+    :param ST: spatial transcriptomics data as an anndata object
+    :type ST: AnnData
+    :param SC: single cell RNA-seq data as an anndata object
+    :type SC: AnnData
+    :param expins_genes: List of uniques genes for which celltype specific mRNA abundance have been calculated
+    :type expins_genes: list
+    :raises Exception: Raises exception if each ligand provided does not correspond to each target provided
+    :returns:
+        - unique ligands and targets (dict) - dictionary with indexed, unique, ligands and targets
+        - ligand target pairs (ndarray) - 2D array of ligands and their corresponding targets
+        - ST non zero matrix (ndarray) - Boolean matrix denoting non zero values in ST
+    """
     SC_copy = SC.copy()
     ST_copy = ST.copy()
     if len(ligands) != len(targets):
@@ -70,6 +88,20 @@ def create_graph(X_coord, Y_coord, technology, radius=0):
 #Wrapper function for create_graph
 #Returns: graph: row index = spot index; graph[row index] = list of spot neighbors
 def neighborhood(X_coord, Y_coord, technology, radius):
+    """Generate neighborhood graph provided X and Y coordinates of each spot.
+
+    :param X_coord: List of X coordinates of spatial transcriptomics data
+    :type X_coord: list
+    :param Y_coord: List of Y coordinates of spatial transcriptomics data
+    :type Y_coord: list
+    :param technology: spatial technology used to generate spatial data. Currently supports argument "visium".
+    :type technology: str
+    :param radius: (Optional) Every spot within radius distance from a spot is considered as the spots neighbor.
+    :type radius: float
+    :raises Exception: Raises exception if appropriate tehcnology is not selected.
+    :return: 2D array of graph with corresponding neighbor indices
+    :rtype: ndarray
+    """
     technologies=['visium','slideseq']
     if technology in technologies:
         graph = create_graph(X_coord, Y_coord, technology, radius)
@@ -286,6 +318,33 @@ def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero):
 #Wrapper function for get neighborhood scores
 #Return neighborhood scores: array of size ligand_target_pair vs spots OR anndata object
 def compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes, return_adata=True):
+    """Computes neighborhood score for each ligand-target pair across each spot.
+
+    :param SC: single cell RNA-seq data as an anndata object
+    :type SC: AnnData
+    :param ST: spatial transcriptomics data as an anndata object
+    :type ST: AnnData
+    :param celltypes: list of unique celltypes within SC
+    :type celltypes: list
+    :param celltype_proportions: proportions of celltypes within each spot in ST
+    :type celltype_proportions: ndarray
+    :param graph: neighborhood graph generated from function neighborhood
+    :type graph: ndarray
+    :param ligand_target_index: dictionary with indexed, unique, ligands and targets (generated from function get_ligand_target)
+    :type ligand_target_index: dict
+    :param ligand_target_pairs: 2D array of ligands and their corresponding targets (generated from function get_ligand_target)
+    :type ligand_target_pairs: ndarray
+    :param ST_nonzero: Boolean matrix denoting non zero values in ST
+    :type ST_nonzero: bool
+    :param expins: celltype specific mRNA abundance values for each gene estimated from cell2location
+    :type expins: ndarray
+    :param genes: List of uniques genes for which celltype specific mRNA abundance have been calculated
+    :type genes: list
+    :param return_adata: Return neighborhood scores as an anndata object with ST spatial information, defaults to True
+    :type return_adata: bool, optional
+    :return: neighborhood scores
+    :rtype: ndarray
+    """
     #Get gene indices
     gene_indices = []
     ligand_target_list = list(ligand_target_index.keys())

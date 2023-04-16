@@ -36,6 +36,29 @@ def get_msig(species, path=None):
 
 
 def create_cluster(neighbscore, msig, pathway_path=None, method='dhc', minpts=3, use_pathway=False, pathway_thresh=4, ltclust_thresh=6, restrict_to_KHW=False):
+    """Creation of ligand-target pair sets using provided pathways; or by De novo clustering of ligand-target pairs.
+
+    :param neighbscore: Neighborhood scores generated
+    :type neighbscore: AnnData
+    :param msig: Dataframe with columns 'gs_name' and 'gs_symbol'
+    :type msig: DataFrame
+    :param pathway_path: Subset of pathways to use within msig, defaults to None
+    :type pathway_path: str, optional
+    :param method: Clustering method for De novo clusters (available: ['hdbscan','dhc']), defaults to 'dhc'
+    :type method: str, optional
+    :param minpts: Minimum cluster size for hdbscan option, defaults to 3
+    :type minpts: int, optional
+    :param use_pathway: Use pathway_path to subset msig, defaults to False
+    :type use_pathway: bool, optional
+    :param pathway_thresh: Minimum number of ligand-target pairs in pathway ligand-target pair set, defaults to 4
+    :type pathway_thresh: int, optional
+    :param ltclust_thresh: Minimum number of ligand-target pairs in De novo ligand-target pair set, defaults to 6
+    :type ltclust_thresh: int, optional
+    :param restrict_to_KHW: Restrict pathways to KEGG, HALLMARK and WIKIPATHWAYS (Note: gs_name should have prefixes 'KEGG_', 'HALLMARK_', 'WP_' in order to be considered), defaults to False
+    :type restrict_to_KHW: bool, optional
+    :return: Dictionary of pathways/De novo clusters and their corresponding ligand-target pair sets
+    :rtype: dict
+    """
     neighbscore_copy = neighbscore.copy()
     if use_pathway:
         pathwayset = pd.read_csv(pathway_path)
@@ -121,6 +144,27 @@ def get_top_n_clust_pairs(neighbscore, neighbscore_df, n=20):
 
 
 def downstream_analysis(neighbscore, ltpair_clusters=None, resolution=0.8, n_markers=20, n_top=20, pdf_path=None, return_cluster = False, return_pcs = False):
+    """Performs leiden clustering over neighborhood scores and converts pathway/De novo cluster scores into AnnData objects.
+
+    :param neighbscore: _description_
+    :type neighbscore: _type_
+    :param ltpair_clusters: _description_, defaults to None
+    :type ltpair_clusters: _type_, optional
+    :param resolution: _description_, defaults to 0.8
+    :type resolution: float, optional
+    :param n_markers: _description_, defaults to 20
+    :type n_markers: int, optional
+    :param n_top: _description_, defaults to 20
+    :type n_top: int, optional
+    :param pdf_path: _description_, defaults to None
+    :type pdf_path: _type_, optional
+    :param return_cluster: _description_, defaults to False
+    :type return_cluster: bool, optional
+    :param return_pcs: _description_, defaults to False
+    :type return_pcs: bool, optional
+    :return: _description_
+    :rtype: _type_
+    """
     neighbscore_copy = neighbscore.copy()
     sc.pp.filter_genes(neighbscore_copy, min_cells=1)
     neighbscore_df = neighbscore_copy.to_df().T
@@ -404,6 +448,27 @@ def spot_v_spot(neighbscore, celltype, resolution=0.8, ltpair_clusters=None, n_m
 
 
 def sankeyPlot(neighbscore, celltype, ltpairs, n_celltype=5, clusters='All', title=None, path=None, labelsize=2, labelcolor='#000000'):
+    """_summary_
+
+    :param neighbscore: _description_
+    :type neighbscore: _type_
+    :param celltype: _description_
+    :type celltype: _type_
+    :param ltpairs: _description_
+    :type ltpairs: _type_
+    :param n_celltype: _description_, defaults to 5
+    :type n_celltype: int, optional
+    :param clusters: _description_, defaults to 'All'
+    :type clusters: str, optional
+    :param title: _description_, defaults to None
+    :type title: _type_, optional
+    :param path: _description_, defaults to None
+    :type path: _type_, optional
+    :param labelsize: _description_, defaults to 2
+    :type labelsize: int, optional
+    :param labelcolor: _description_, defaults to '#000000'
+    :type labelcolor: str, optional
+    """
     celltype_df = celltype.to_df().T
     celltype_df = celltype_df.apply(sum_norm, axis=0)
     celltype_copy = sc.AnnData(celltype_df.T)

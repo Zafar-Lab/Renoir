@@ -85,7 +85,7 @@ neighborhood_scores = Renoir.compute_neighborhood_scores(SC, ST, celltypes, cell
 
 ### Documentation
 
-Documentation is available at: link
+Documentation is available at: https://renoir.readthedocs.io/en/latest/
 
 ### References
 

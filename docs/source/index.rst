@@ -33,7 +33,7 @@ Available functionality
    :caption: Contents:
 
    install_usage
-   ../../notebooks/BC_tutorial
+   notebooks/BC_tutorial
    api.rst
 
 

@@ -1,2 +1,8 @@
 nbsphinx
 myst-parser
+anndata
+scanpy
+numpy
+hdbscan
+dynamicTreeCut
+plotly

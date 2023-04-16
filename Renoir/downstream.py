@@ -54,7 +54,7 @@ def create_cluster(neighbscore, msig, pathway_path=None, method='dhc', minpts=3,
     :type pathway_thresh: int, optional
     :param ltclust_thresh: Minimum number of ligand-target pairs in De novo ligand-target pair set, defaults to 6
     :type ltclust_thresh: int, optional
-    :param restrict_to_KHW: Restrict pathways to KEGG, HALLMARK and WIKIPATHWAYS (Note: gs_name should have prefixes 'KEGG_', 'HALLMARK_', 'WP_' in order to be considered), defaults to False
+    :param restrict_to_KHW: Restrict pathways to KEGG, HALLMARK and WIKIPATHWAYS (Note: gs_name should have prefixes 'KEGG\_', 'HALLMARK\_', 'WP\_' in order to be considered), defaults to False
     :type restrict_to_KHW: bool, optional
     :return: Dictionary of pathways/De novo clusters and their corresponding ligand-target pair sets
     :rtype: dict

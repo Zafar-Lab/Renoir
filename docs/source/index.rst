@@ -15,7 +15,7 @@ targets.
 .. raw:: html
 
    <p align="center">
-   <img src="https://raw.githubusercontent.com/Zafar-Lab/Renoir/main/docs/images/Overview.png" alt="Overview of RENOIR" width="600"/>
+   <img src="https://raw.githubusercontent.com/Zafar-Lab/Renoir/main/docs/source/images/Overview.png" alt="Overview of RENOIR" width="600"/>
    </p>
 
 Available functionality

@@ -1,19 +1,19 @@
 # Renoir
 
-Renoir is an information-theory-based scoring metric for quantifying the activity between a ligand and its target gene given a specific spatial context. Renoir can also infer spatial communication domains that harbor similar ligand-target activities. Renoir also identifies spatially enriched ligand-target gene sets (pathway activity) and characterizes domain-specific activities between ligands and targets.
+**Renoir** is an information-theory-based scoring metric for quantifying the activity between a ligand and its target gene given a specific spatial context. Renoir can also infer spatial communication domains that harbor similar ligand-target activities. Renoir also identifies spatially enriched ligand-target gene sets (pathway activity) and characterizes domain-specific activities between ligands and targets.
 
 <p align="center">
 <img src="https://github.com/Zafar-Lab/Renoir/blob/main/docs/source/images/Overview.png" alt="Overview of RENOIR" width="600"/>
 </p>
 
 ### Requirements
-All requirements are provided in the ```renoir.yml``` file. It is recommended to utilize the same versions as provided in renoir.yml.
+All requirements are provided in the ```renoir.yml``` file. It is recommended to utilize the same versions as provided in ```renoir.yml``` file.
 
 ### Installation
-**Note**: Installation does not include cell2location. Please install cell2location separately.
 
 - Download the repository and install the conda environment using `conda env create -f renoir.yml`
-- Install Renoir by cd to this directory and running `pip install .`
+- Install Renoir by cd to this directory and running `pip install`.
+**Note**: Installation does not include **cell2location**. Please install cell2location separately.
 
 ### Usage
 
@@ -85,7 +85,7 @@ neighborhood_scores = Renoir.compute_neighborhood_scores(SC, ST, celltypes, cell
 
 ### Documentation
 
-Documentation is available at: https://renoir.readthedocs.io/en/latest/
+Documentation for Renoir is available at: https://renoir.readthedocs.io/en/latest/
 
 ### References
 

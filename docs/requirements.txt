@@ -4,5 +4,3 @@ anndata
 scanpy
 numpy
 hdbscan
-dynamicTreeCut
-plotly

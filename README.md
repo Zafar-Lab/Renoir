@@ -13,7 +13,6 @@ All requirements are provided in the ```renoir.yml``` file. It is recommended to
 
 - Download the repository and install the conda environment using `conda env create -f renoir.yml`
 - Install Renoir by cd to this directory and running `pip install`.
-
 **Note**: Installation does not include **cell2location**. Please install cell2location separately.
 
 ### Usage

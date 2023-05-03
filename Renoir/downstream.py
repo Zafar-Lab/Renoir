@@ -22,6 +22,8 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib.colors as clr
 import seaborn as sns
+import distinctipy
+from matplotlib.patches import Patch
 
 # create hdbscan/dynamic hclust gene clusters
 def get_msig(species, path=None):
@@ -615,12 +617,26 @@ def sankeyPlot(neighbscore, celltype, ltpairs, n_celltype=5, clusters='All', tit
     )])
     if title is not None:
         fig.update_layout(title_text=title, font_size=10)
-    if path is None:
-        fig.show()
-    else:
-        fig.write_html(path)
+    return fig
 
 def pcs_v_neighbscore(neighbscore, ltpair_clusters=None, pdf_path=None, spatialfeatureplot=True, clustermap=True, size=1.4, colormap = sns.color_palette("Spectral",as_cmap=True)):
+    """_summary_
+
+    :param neighbscore: _description_
+    :type neighbscore: _type_
+    :param ltpair_clusters: _description_, defaults to None
+    :type ltpair_clusters: _type_, optional
+    :param pdf_path: _description_, defaults to None
+    :type pdf_path: _type_, optional
+    :param spatialfeatureplot: _description_, defaults to True
+    :type spatialfeatureplot: bool, optional
+    :param clustermap: _description_, defaults to True
+    :type clustermap: bool, optional
+    :param size: _description_, defaults to 1.4
+    :type size: float, optional
+    :param colormap: _description_, defaults to sns.color_palette("Spectral",as_cmap=True)
+    :type colormap: _type_, optional
+    """
     neighbscore_copy = neighbscore
     sc.pp.filter_genes(neighbscore_copy, min_cells=1)
     neighbscore_df = neighbscore_copy.to_df().T
@@ -664,3 +680,243 @@ def pcs_v_neighbscore(neighbscore, ltpair_clusters=None, pdf_path=None, spatialf
             pdf.savefig(temp_fig)
             plt.close()
     pdf.close()    
+
+def ligand_ranking(neighbscore, celltype, scrna, ligand_receptor_pairs, ligand_target_regulatory_potential, domain, receptor_exp=0.1, markers={'top':100}, domain_celltypes=['top',5], celltype_colors={'auto':True}):
+    """_summary_
+
+    :param neighbscore: _description_
+    :type neighbscore: _type_
+    :param celltype: _description_
+    :type celltype: _type_
+    :param scrna: _description_
+    :type scrna: _type_
+    :param ligand_receptor_pairs: _description_
+    :type ligand_receptor_pairs: _type_
+    :param ligand_target_regulatory_potential: _description_
+    :type ligand_target_regulatory_potential: _type_
+    :param domain: _description_
+    :type domain: _type_
+    :param receptor_exp: _description_, defaults to 0.1
+    :type receptor_exp: float, optional
+    :param markers: _description_, defaults to {'top':100}
+    :type markers: dict, optional
+    :param domain_celltypes: _description_, defaults to ['top',5]
+    :type domain_celltypes: list, optional
+    :param celltype_colors: _description_, defaults to {'auto':True}
+    :type celltype_colors: dict, optional
+    :return: _description_
+    :rtype: _type_
+    """
+    sc.pp.filter_genes(neighbscore, min_cells=1)
+    neighbscore_df = neighbscore.raw.to_adata().to_df()
+    celltype_df = celltype.to_df()
+    celltype_df = celltype_df.apply(sum_norm, axis=1).T
+    #Get top n celltypes
+    
+    celltype_copy = sc.AnnData(celltype_df.T)
+    celltype_copy.obs['leiden'] = neighbscore.obs['leiden']
+    celltype_copy.uns = neighbscore.uns
+    celltype_copy = celltype_copy[celltype_copy.obs.loc[celltype_copy.obs.leiden == domain].index].copy()
+    celltype_df_copy = celltype_copy.to_df()
+    # Get average celltype score and average neighbscore
+    celltype_avg = pd.DataFrame(columns=celltype_copy.var_names, index=celltype_copy.obs['leiden'].cat.categories)
+    celltype_avg.loc[domain] = celltype_copy[celltype_copy.obs['leiden'].isin([domain]), :].X.mean(0)
+    celltype_avg = celltype_avg.T.to_dict('dict')
+    if domain_celltypes[0]=='top':
+        top_celltypes = sorted(celltype_avg[domain], key=celltype_avg[domain].get, reverse=True)[:domain_celltypes[1]]
+        top_celltypes = list(set(top_celltypes))
+    else:
+        top_celltypes = domain_celltypes
+    # Get celltype markers
+    if 'top' in markers.keys():
+        sc.pp.filter_genes(scrna, min_cells=1)
+        scrna = scrna[scrna.obs.loc[scrna.obs.celltype.isin(top_celltypes)].index].copy()
+        scrna.obs.celltype = scrna.obs.celltype.astype("category")
+        scrna.raw = scrna
+        sc.tl.rank_genes_groups(scrna, "celltype", method="wilcoxon")
+        markers = {}
+        for col in scrna.uns['rank_genes_groups']['names'][0].dtype.names:
+            markers[col] = []
+
+        for index in range(len(scrna.uns['rank_genes_groups']['names'])):
+            for col in range(len(scrna.uns['rank_genes_groups']['names'][index])):
+                if scrna.uns['rank_genes_groups']['logfoldchanges'][index][col] > 0 and scrna.uns['rank_genes_groups']['pvals_adj'][index][col] < 0.05:
+                    markers[scrna.uns['rank_genes_groups']['names'][0].dtype.names[col]].append(scrna.uns['rank_genes_groups']['names'][index][col])
+        markers = pd.DataFrame(list(markers.values()), index=markers.keys()).T
+        markers = markers.iloc[0:200,:]
+    else:
+        markers = pd.DataFrame(list(markers.values()), index=markers.keys()).T
+    markers = markers[top_celltypes]
+    # Select ligands and targets that are markers and receptors that are expressed
+    receptors = {}
+    for receptor in ligand_receptor_pairs.receptor.unique():
+        if receptor in scrna.var_names:
+            receptors[receptor] = []
+            for ct in markers.columns:
+                temp = scrna[scrna.obs.loc[scrna.obs.celltype == ct].index, receptor].to_df()
+                if  np.count_nonzero(temp)/len(temp) >= receptor_exp:
+                    receptors[receptor].append(ct)
+    
+    ligands, targets = zip(*(s.split(":") for s in neighbscore.var_names))
+    ct_spec_mark = {'ligand':{},'target':{}}
+    for i in markers.columns:
+        ct_spec_mark['target'][i] = []
+
+    for index in range(len(ligands)):
+        ligand = ligands[index]
+        target = targets[index]
+        ligand_celltypes = list(markers.columns[markers.isin([ligand]).any()])
+        target_celltypes = list(markers.columns[markers.isin([target]).any()])
+        if len(ligand_celltypes)>=1:
+            ct_spec_mark['ligand'][ligand] = []
+            for ctl in ligand_celltypes:
+                ct_spec_mark['ligand'][ligand].append(ctl)
+        if len(target_celltypes)>=1:
+            for ctt in target_celltypes:
+                if target not in ct_spec_mark['target'][ctt]:
+                    ct_spec_mark['target'][ctt].append(target)
+    
+    # For each domain find score for each ligand and target and its corresponding celltype
+    lrt_dict = {}
+    for i,row in ligand_receptor_pairs.iterrows():
+        if row['ligand'] in ct_spec_mark['ligand'].keys() and row['receptor'] in receptors.keys():
+            if row['ligand'] not in lrt_dict.keys():
+                lrt_dict[row['ligand']] = {}
+                lrt_dict[row['ligand']]['celltype'] = ct_spec_mark['ligand'][row['ligand']]
+            for ct in receptors[row['receptor']]:
+                for target in ct_spec_mark['target'][ct]:
+                    if row['ligand']+':'+target in neighbscore.var_names:
+                        if target not in lrt_dict[row['ligand']].keys():
+                            lrt_dict[row['ligand']][target] = []
+                        if ct not in lrt_dict[row['ligand']][target]:
+                            lrt_dict[row['ligand']][target].append(ct)
+    
+    ligand_score = {}
+    for ligand in lrt_dict.keys():
+        ligand_score[ligand] = {}
+        targets = list(lrt_dict[ligand].keys())
+        ligand_ct = lrt_dict[ligand]['celltype']
+        targets.remove('celltype')
+        for target in targets:
+            target_ct = lrt_dict[ligand][target]
+            temp = celltype_df_copy.loc[:,list(set(ligand_ct+target_ct))]
+            spots = temp[(temp.select_dtypes(include=['number']) != 0).all(1)].index
+            ligand_score[ligand][target] = neighbscore_df.loc[spots,ligand+':'+target].mean()
+    
+    targets = []
+    for ligand in ligand_score.keys():
+        for target in ligand_score[ligand].keys():
+            if target not in targets:
+                targets.append(target)
+    
+    # Get ligand ranking score
+    ligand_ranking = {}
+    for ligand in ligand_score.keys():
+        if len(ligand_score[ligand].keys()) > 0:
+            ligand_score_temp = []
+            ligand_regulatory_potential = []
+            for target in targets:
+                if target in ligand_score[ligand].keys():
+                    ligand_score_temp.append(ligand_score[ligand][target])
+                else:
+                    ligand_score_temp.append(0)
+                if target in ligand_target_regulatory_potential[ligand].keys():
+                    ligand_regulatory_potential.append(ligand_target_regulatory_potential[ligand][target])
+                else:
+                    ligand_regulatory_potential.append(0)
+            ligand_ranking[ligand] = pd.Series(ligand_score_temp).corr(pd.Series(ligand_regulatory_potential))
+    
+    # Plot avg neighborhood scores at colocalized spots ranked by ligand ranking score
+    ligand_score_df = pd.DataFrame(ligand_score).fillna(0).T
+    ligand_score_df =(ligand_score_df-ligand_score_df.min())/(ligand_score_df.max()-ligand_score_df.min())
+    ligand_score_df = ligand_score_df.fillna(0)
+    ligand_score_df = ligand_score_df.loc[sorted(ligand_ranking, key=lambda k:ligand_ranking[k], reverse=True),:]
+    ligand_score_df = ligand_score_df.loc[~(ligand_score_df==0).all(axis=1)]
+    ligand_score_df = ligand_score_df.loc[:, (ligand_score_df != 0).any(axis=0)]
+    # Sort columns
+    col_order = []
+    for index in ligand_score_df.index:
+        for target in ligand_score[index].keys():
+            if target not in col_order and target in ligand_score_df.columns:
+                col_order.append(target)
+    ligand_score_df = ligand_score_df[col_order]
+    ligand_score_df.insert(loc=0, column='ligand score', value=[ligand_ranking[x] for x in ligand_score_df.index])
+
+    if 'auto' in celltype_colors.keys():
+        colors=dict(zip(top_celltypes,distinctipy.get_colors(len(top_celltypes))))
+    else:
+        colors = {k:celltype_colors[k] for k in top_celltypes}
+    
+    #Create dummy joint plot
+    sns.set(rc={'axes.facecolor':'#ffffff', 'figure.facecolor':'#ffffff'}, font_scale=1.7)
+    g = sns.jointplot(data=ligand_score_df, x=ligand_score_df.iloc[:,1], y=ligand_score_df.iloc[:,1], kind='hist', bins=(len(ligand_score_df.columns), len(ligand_score_df.index)))
+    g.ax_marg_y.cla()
+    g.ax_marg_x.cla()
+
+    #Generate heatmap
+    mask = ligand_score_df.apply(lambda x: x if not x.name.endswith('ligand score') else 0,result_type='broadcast',axis=0).eq(0)
+    sns.heatmap(data=ligand_score_df, ax=g.ax_joint, mask=mask, cbar=True, cmap='BuPu', cbar_kws = dict(use_gridspec=False,location="right", shrink=0.2, pad=0.1))
+    plt.subplots_adjust(left=0.1, right=0.8, top=0.9, bottom=0.1)
+    # get the current positions of the joint ax and the ax for the marginal x
+    pos_joint_ax = g.ax_joint.get_position()
+    pos_marg_x_ax = g.ax_marg_x.get_position()
+    # reposition the joint ax so it has the same width as the marginal x ax
+    g.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height])
+    # reposition the colorbar using new x positions and y positions of the joint ax
+    g.fig.axes[-1].set_position([.83, pos_joint_ax.y0, .07, pos_joint_ax.height])
+    mask = ligand_score_df.apply(lambda x: x if x.name.endswith('ligand score') else 0,result_type='broadcast',axis=0).eq(0)
+    sns.heatmap(data=ligand_score_df, ax=g.ax_joint, mask=mask, cbar=True, cmap='RdYlBu_r', cbar_kws = dict(use_gridspec=False,location="left", shrink=0.15, pad=0.2))
+    plt.subplots_adjust(left=0.1, right=0.8, top=0.9, bottom=0.1)
+    # get the current positions of the joint ax and the ax for the marginal x
+    pos_joint_ax = g.ax_joint.get_position()
+    pos_marg_x_ax = g.ax_marg_x.get_position()
+    # reposition the joint ax so it has the same width as the marginal x ax
+    g.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height])
+    # reposition the colorbar using new x positions and y positions of the joint ax
+    g.fig.axes[-1].set_position([.83, pos_joint_ax.y0, .07, pos_joint_ax.height])
+
+    #celltype bar plot for ligands
+    ct_bar_plot = pd.DataFrame(0, columns = top_celltypes, index = ligand_score_df.index)
+    for col in ct_bar_plot.columns:
+        for row in ct_bar_plot.index:
+            if col in ct_spec_mark['ligand'][row]:
+                ct_bar_plot.loc[row,col] = celltype_avg[domain][col]
+    ct_bar_plot = ct_bar_plot.apply(sum_norm, axis=1)
+    ct_bar_plot = ct_bar_plot.cumsum(axis=1)
+    cols = list(ct_bar_plot.columns)
+    cols.reverse()
+    for col in cols:
+        g.ax_marg_y.barh(np.arange(0.5, len(ligand_score_df.index)), ct_bar_plot[col].tolist(), color=colors[col])
+
+    #celltype bar plot for targets
+    ct_bar_plot = pd.DataFrame(0, columns = top_celltypes, index = list(ligand_score_df.columns)[1:])
+    for col in ct_bar_plot.columns:
+        for row in ct_bar_plot.index:
+            if row in ct_spec_mark['target'][col]:
+                ct_bar_plot.loc[row,col] = celltype_avg[domain][col]
+    ct_bar_plot = ct_bar_plot.apply(sum_norm, axis=1)
+    ct_bar_plot = ct_bar_plot.cumsum(axis=1)
+    cols = list(ct_bar_plot.columns)
+    cols.reverse()
+    for col in cols:
+        g.ax_marg_x.bar(np.arange(1.5, len(ligand_score_df.columns)), ct_bar_plot[col].tolist(), color=colors[col])
+
+    g.ax_joint.set_xticks(np.arange(0.5, len(ligand_score_df.columns)))
+    g.ax_joint.set_xticklabels(list(ligand_score_df.columns))
+    g.ax_joint.set_yticks(np.arange(0.5, len(ligand_score_df.index)))
+    g.ax_joint.set_yticklabels(list(ligand_score_df.index))
+
+    # remove ticks between heatmap and histograms
+    g.ax_marg_x.tick_params(axis='x', bottom=False, labelbottom=False)
+    g.ax_marg_y.tick_params(axis='y', left=False, labelleft=False)
+    # remove ticks showing the heights of the histograms
+    g.ax_marg_x.tick_params(axis='y', left=False, labelleft=False)
+    g.ax_marg_y.tick_params(axis='x', bottom=False, labelbottom=False)
+
+    #Create legend
+    g.fig.suptitle("Cluster "+domain)
+    handles = [Patch(facecolor=colors[name]) for name in colors]
+    plt.legend(handles, colors, bbox_to_anchor = (1,1), bbox_transform = plt.gcf().transFigure, ncol=3, loc='upper right')
+    fig = plt.gcf()
+    plt.close()
+    return fig

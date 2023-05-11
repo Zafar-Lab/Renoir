@@ -146,26 +146,26 @@ def get_top_n_clust_pairs(neighbscore, neighbscore_df, n=20):
 
 
 def downstream_analysis(neighbscore, ltpair_clusters=None, resolution=0.8, n_markers=20, n_top=20, pdf_path=None, return_cluster = False, return_pcs = False):
-    """Performs leiden clustering over neighborhood scores and converts pathway/De novo cluster scores into AnnData objects.
+    """Performs leiden clustering over neighborhood scores, generates DE ligand-target pairs for each domain, finds top n highly expressed pairs across each domain and converts pathway/De novo cluster scores into AnnData objects. (Note: This function executes default DE analysis as is mentioned in scanpy docs. For more flexibility, it is recommended for users to perform analysis over generated neighborhood scores manually with the help of scanpy)
 
-    :param neighbscore: _description_
-    :type neighbscore: _type_
-    :param ltpair_clusters: _description_, defaults to None
-    :type ltpair_clusters: _type_, optional
-    :param resolution: _description_, defaults to 0.8
+    :param neighbscore: adata object with pre computed neighborhood scores
+    :type neighbscore: AnnData
+    :param ltpair_clusters: Dictionary of pathway/gene set vs ligand-target pairs. Can be generated using create_cluster, defaults to None
+    :type ltpair_clusters: dict, optional
+    :param resolution: resoluton parameter for leiden clustering, defaults to 0.8
     :type resolution: float, optional
-    :param n_markers: _description_, defaults to 20
+    :param n_markers: number of markers to display for each cluster, defaults to 20
     :type n_markers: int, optional
-    :param n_top: _description_, defaults to 20
+    :param n_top: number of highly expressed ligand-target pairs to display, defaults to 20
     :type n_top: int, optional
-    :param pdf_path: _description_, defaults to None
-    :type pdf_path: _type_, optional
-    :param return_cluster: _description_, defaults to False
+    :param pdf_path: path where the results are to be stored as a pdf, defaults to None
+    :type pdf_path: str, optional
+    :param return_cluster: return adata object with computed leiden clusters, defaults to False
     :type return_cluster: bool, optional
-    :param return_pcs: _description_, defaults to False
+    :param return_pcs: return adata object with pathway/geneset and their corresponding scores, defaults to False
     :type return_pcs: bool, optional
-    :return: _description_
-    :rtype: _type_
+    :return: return adata neighborhood score adata object with leiden clusters and/or adata object with pathway/geneset and their corresponding scores
+    :rtype: AnnData
     """
     neighbscore_copy = neighbscore.copy()
     sc.pp.filter_genes(neighbscore_copy, min_cells=1)
@@ -449,26 +449,24 @@ def spot_v_spot(neighbscore, celltype, resolution=0.8, ltpair_clusters=None, n_m
     pdf.close()
 
 
-def sankeyPlot(neighbscore, celltype, ltpairs, n_celltype=5, clusters='All', title=None, path=None, labelsize=2, labelcolor='#000000'):
-    """_summary_
+def sankeyPlot(neighbscore, celltype, ltpairs, n_celltype=5, clusters='All', title=None, labelsize=2, labelcolor='#000000'):
+    """Summarizes ligand-target activity across celltypes and domains using a Sankey plot for a given set of ligand-target pairs.
 
-    :param neighbscore: _description_
-    :type neighbscore: _type_
-    :param celltype: _description_
-    :type celltype: _type_
-    :param ltpairs: _description_
-    :type ltpairs: _type_
-    :param n_celltype: _description_, defaults to 5
+    :param neighbscore: adata object of neighborhood scores with leiden clusters (obs column 'leiden' of type categorical)
+    :type neighbscore: AnnData
+    :param celltype: adata object with celltype distributions (proportiond or abundance) across spots
+    :type celltype: AnnData
+    :param ltpairs: set of ligand-target pairs to display
+    :type ltpairs: list
+    :param n_celltype: top n highly expressed celltypes to be considered per domain, defaults to 5
     :type n_celltype: int, optional
-    :param clusters: _description_, defaults to 'All'
-    :type clusters: str, optional
-    :param title: _description_, defaults to None
-    :type title: _type_, optional
-    :param path: _description_, defaults to None
-    :type path: _type_, optional
-    :param labelsize: _description_, defaults to 2
+    :param clusters: list of domains to consider, defaults to 'All'
+    :type clusters: list, optional
+    :param title: Title of the sankey plot, defaults to None
+    :type title: str, optional
+    :param labelsize: size of labels in the plot, defaults to 2
     :type labelsize: int, optional
-    :param labelcolor: _description_, defaults to '#000000'
+    :param labelcolor: color of labels in the plot, defaults to '#000000'
     :type labelcolor: str, optional
     """
     celltype_df = celltype.to_df().T
@@ -620,21 +618,21 @@ def sankeyPlot(neighbscore, celltype, ltpairs, n_celltype=5, clusters='All', tit
     return fig
 
 def pcs_v_neighbscore(neighbscore, ltpair_clusters=None, pdf_path=None, spatialfeatureplot=True, clustermap=True, size=1.4, colormap = sns.color_palette("Spectral",as_cmap=True)):
-    """_summary_
+    """Generate heatmaps of pathway/geneset scores vs individual liagnd-target contribution
 
-    :param neighbscore: _description_
-    :type neighbscore: _type_
-    :param ltpair_clusters: _description_, defaults to None
-    :type ltpair_clusters: _type_, optional
-    :param pdf_path: _description_, defaults to None
-    :type pdf_path: _type_, optional
-    :param spatialfeatureplot: _description_, defaults to True
+    :param neighbscore: adata object of neighborhood scores
+    :type neighbscore: AnnData
+    :param ltpair_clusters: dictionary of genesets/pathways with corresponding ligand-target pairs (can be generated using create_cluster), defaults to None
+    :type ltpair_clusters: dict, optional
+    :param pdf_path: path to save plots as a pdf file, defaults to None
+    :type pdf_path: str, optional
+    :param spatialfeatureplot: Include spatial feature plots of geneset/pathway activity, defaults to True
     :type spatialfeatureplot: bool, optional
-    :param clustermap: _description_, defaults to True
+    :param clustermap: Generate clustermap of each pathway/geneset, defaults to True
     :type clustermap: bool, optional
-    :param size: _description_, defaults to 1.4
+    :param size: spot size (required if spatialfeatureplot is set to True), defaults to 1.4
     :type size: float, optional
-    :param colormap: _description_, defaults to sns.color_palette("Spectral",as_cmap=True)
+    :param colormap: colormap for the heatmap and spatial fetaure plots, defaults to sns.color_palette("Spectral",as_cmap=True)
     :type colormap: _type_, optional
     """
     neighbscore_copy = neighbscore

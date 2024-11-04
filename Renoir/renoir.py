@@ -7,7 +7,7 @@ import pandas as pd
 
 #Get unique set of ligands and targets and indexed ligand target pairs
 #Returns: dict: {ligands and targets:index}; array: ligand x target; nonzero ST positions
-def get_ligand_target(ligands, targets, ST, SC, expins_genes):
+def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
     """Get unique set of ligands and targets and indexed ligand target pairs.
 
     :param ligands: List of ligands as they occur with every corresponding target
@@ -20,6 +20,8 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes):
     :type SC: AnnData
     :param expins_genes: List of uniques genes for which celltype specific mRNA abundance have been calculated
     :type expins_genes: list
+    :param lr_database: Path to a csv with ligand-receptor pairs
+    :type lr_database: str
     :raises Exception: Raises exception if each ligand provided does not correspond to each target provided
     :returns:
         - unique ligands and targets (dict) - dictionary with indexed, unique, ligands and targets
@@ -35,6 +37,36 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes):
     ligands_subset = []
     targets_subset = []
 
+    ligand_receptor_dict = pandas.read_csv(lr_database)
+    receptor_list = list(set(ligand_receptor_dict['receptor'].unique()).intersection(SC.var_names))
+    ligand_receptor_dict = ligand_receptor_dict[ligand_receptor_dict['receptor'].isin(receptor_list)].groupby('ligand')['receptor'].apply(list).to_dict()
+
+    #Generates ligand-recptor dictionsry
+    mean_sc = SC.to_df()
+    mean_sc['celltype'] = SC.obs.celltype
+    mean_sc = mean_sc.groupby('celltype').mean().T.to_dict()
+    ligand_receptor_ct = {}
+    ligand_receptor_ct_dict = {}
+    for ligand in new_pairs['ligand'].unique():
+    ligand_receptor_ct[ligand] = []
+    ligand_receptor_ct_dict[ligand] = {}
+    if ligand not in ligand_receptor_dict.keys():
+        for ct in expins['INS'].columns:
+            ligand_receptor_ct[ligand].append(0)
+            ligand_receptor_ct_dict[ligand][ct] = 0
+        continue
+    for ct in expins['INS'].columns:
+        flag = True
+        for receptor in ligand_receptor_dict[ligand]:
+            if mean_sc[ct][receptor] >= 0.1:
+                ligand_receptor_ct[ligand].append(1)
+                ligand_receptor_ct_dict[ligand][ct] = 1
+                flag = False
+                break
+        if flag:
+            ligand_receptor_ct[ligand].append(0)
+            ligand_receptor_ct_dict[ligand][ct] = 0
+    
     for index in range(len(ligands)):
         if (ligands[index] in SC_copy.var_names and ligands[index] in ST_copy.var_names and ligands[index] in expins_genes) and (targets[index] in SC_copy.var_names and targets[index] in ST_copy.var_names and targets[index] in expins_genes):
             ligands_subset.append(ligands[index])

@@ -3,11 +3,14 @@ import math
 import numpy as np
 from numba import njit, prange
 import pandas as pd
+import scanpy as sc
+import pickle
+import pdb
 
 
 #Get unique set of ligands and targets and indexed ligand target pairs
 #Returns: dict: {ligands and targets:index}; array: ligand x target; nonzero ST positions
-def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
+def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database, celltypes):
     """Get unique set of ligands and targets and indexed ligand target pairs.
 
     :param ligands: List of ligands as they occur with every corresponding target
@@ -22,11 +25,14 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
     :type expins_genes: list
     :param lr_database: Path to a csv with ligand-receptor pairs
     :type lr_database: str
+    :param celltypes: List of celltypes involved
+    :type celltypes: list
     :raises Exception: Raises exception if each ligand provided does not correspond to each target provided
     :returns:
         - unique ligands and targets (dict) - dictionary with indexed, unique, ligands and targets
         - ligand target pairs (ndarray) - 2D array of ligands and their corresponding targets
         - ST non zero matrix (ndarray) - Boolean matrix denoting non zero values in ST
+        - ligand receptor celltype matrix - A boolean matrix denoting the presence of any receptor corresponding to a ligand in a cell type
     """
     SC_copy = SC.copy()
     ST_copy = ST.copy()
@@ -37,36 +43,6 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
     ligands_subset = []
     targets_subset = []
 
-    ligand_receptor_dict = pandas.read_csv(lr_database)
-    receptor_list = list(set(ligand_receptor_dict['receptor'].unique()).intersection(SC.var_names))
-    ligand_receptor_dict = ligand_receptor_dict[ligand_receptor_dict['receptor'].isin(receptor_list)].groupby('ligand')['receptor'].apply(list).to_dict()
-
-    #Generates ligand-recptor dictionsry
-    mean_sc = SC.to_df()
-    mean_sc['celltype'] = SC.obs.celltype
-    mean_sc = mean_sc.groupby('celltype').mean().T.to_dict()
-    ligand_receptor_ct = {}
-    ligand_receptor_ct_dict = {}
-    for ligand in new_pairs['ligand'].unique():
-    ligand_receptor_ct[ligand] = []
-    ligand_receptor_ct_dict[ligand] = {}
-    if ligand not in ligand_receptor_dict.keys():
-        for ct in expins['INS'].columns:
-            ligand_receptor_ct[ligand].append(0)
-            ligand_receptor_ct_dict[ligand][ct] = 0
-        continue
-    for ct in expins['INS'].columns:
-        flag = True
-        for receptor in ligand_receptor_dict[ligand]:
-            if mean_sc[ct][receptor] >= 0.1:
-                ligand_receptor_ct[ligand].append(1)
-                ligand_receptor_ct_dict[ligand][ct] = 1
-                flag = False
-                break
-        if flag:
-            ligand_receptor_ct[ligand].append(0)
-            ligand_receptor_ct_dict[ligand][ct] = 0
-    
     for index in range(len(ligands)):
         if (ligands[index] in SC_copy.var_names and ligands[index] in ST_copy.var_names and ligands[index] in expins_genes) and (targets[index] in SC_copy.var_names and targets[index] in ST_copy.var_names and targets[index] in expins_genes):
             ligands_subset.append(ligands[index])
@@ -87,7 +63,28 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
     
     ST_nonzero = np.array(np.transpose(ST[:,list(ligands_and_targets.keys())].X.toarray()), dtype=bool)
     pad_ligand_target = len(max(ligand_target_pairs, key=len))
-    return ligands_and_targets, np.asarray([ligand + [-1]*(pad_ligand_target - len(ligand)) for ligand in ligand_target_pairs]), ST_nonzero
+
+    #Get possible ligand receptor interactions
+    ligand_receptor_dict = pd.read_csv(lr_database)
+    receptor_list = list(set(ligand_receptor_dict['receptor'].unique()).intersection(SC_copy.var_names))
+    ligand_receptor_dict = ligand_receptor_dict[ligand_receptor_dict['receptor'].isin(receptor_list)].groupby('ligand')['receptor'].apply(list).to_dict()
+
+    mean_sc = SC_copy.to_df()
+    mean_sc['celltype'] = SC_copy.obs.celltype
+    mean_sc = mean_sc.groupby('celltype').mean().T.to_dict()
+
+    ligand_genes = list(ligands_and_targets.keys())[0:len(ligand_target_pairs)]
+
+    ligand_receptor_ct = np.zeros((len(ligand_target_pairs),len(celltypes)))
+    for ligand in range(len(ligand_target_pairs)):
+        if ligand_genes[ligand] in ligand_receptor_dict.keys(): 
+            for ct in range(len(celltypes)):
+                for receptor in ligand_receptor_dict[ligand_genes[ligand]]:
+                    if mean_sc[celltypes[ct]][receptor] >= 0.1:
+                        ligand_receptor_ct[ligand][ct] = 1
+                        break
+
+    return ligands_and_targets, np.asarray([ligand + [-1]*(pad_ligand_target - len(ligand)) for ligand in ligand_target_pairs]), ST_nonzero, ligand_receptor_ct
 
 
 #Generate neighbors for each spot given (X,Y) for each spot and spatial technology used
@@ -95,13 +92,13 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database):
 @njit(parallel=True, fastmath=True)
 def create_graph(X_coord, Y_coord, technology, radius=0):
     graph = [ [-1] for _ in range(len(X_coord)) ]
-    if technology == 'visium' or technology == 'ST':
+    if not technology:
         for spot1 in prange(len(X_coord)):
             for spot2 in prange(len(X_coord)):
                 if (spot1 == spot2) or (abs(X_coord[spot1] - X_coord[spot2]) == 1 and abs(Y_coord[spot1] - Y_coord[spot2]) == 1) or (X_coord[spot1] == X_coord[spot2] and abs(Y_coord[spot1] - Y_coord[spot2]) == 2):
                     graph[spot1].append(spot2)
     
-    elif technology == 'slideseq':
+    elif technology:
         for spot1 in prange(len(X_coord)):
             for spot2 in prange(len(X_coord)):
                 if math.sqrt((X_coord[spot1] - X_coord[spot2])**2 + (Y_coord[spot1] - Y_coord[spot2])**2) <= radius:
@@ -134,13 +131,8 @@ def neighborhood(X_coord, Y_coord, technology, radius):
     :return: 2D array of graph with corresponding neighbor indices
     :rtype: ndarray
     """
-    technologies=['visium','slideseq']
-    if technology in technologies:
-        graph = create_graph(X_coord, Y_coord, technology, radius)
-        return graph
-    else:
-        raise Exception("technology currently not supported.")
-
+    graph = create_graph(X_coord, Y_coord, technology, radius)
+    return graph
 
 #Calculate miller-madow entropy
 @njit
@@ -170,7 +162,7 @@ def hist2d(ligand_data, target_data, ligand_bins, target_bins):
 
 
 #@njit(parallel=True)
-def ISM(ligand_target_pairs, H, n_celltypes, celltype_start_index, celltype_proportions, scdata):
+def ISM(ligand_target_pairs, H, n_celltypes, celltype_start_index, celltype_proportions, scdata, ligand_receptor_ct):
     ISM_result = np.full((ligand_target_pairs.shape[0], ligand_target_pairs.shape[1], celltype_proportions.shape[0]), -1, dtype=np.float64)
     for ligand in range(ligand_target_pairs.shape[0]):
         for target_index in range(ligand_target_pairs[ligand].shape[0]):
@@ -185,7 +177,7 @@ def ISM(ligand_target_pairs, H, n_celltypes, celltype_start_index, celltype_prop
                     table = hist2d(ligand_data, target_data, ligand_bin, target_bin)
                     Hl = H[ligand][celltype]
                     Ht = H[target][celltype]
-                    if min(Hl,Ht)==0:
+                    if min(Hl,Ht)==0 or ligand_receptor_ct[ligand][celltype]==0:
                         ISM_temp = 1
                     else:
                         ISM_temp = (Hl + Ht - entropy(table))/min(Hl, Ht)
@@ -245,7 +237,7 @@ def fasthist(n_ligand_target, n_celltypes, celltype_start_index, scdata):
 
 #Calculate ISM and PEM for ligand targets considered
 #Returns: array, ISM (l x t x s) and PEM (g x s)
-def ISM_PEM(SC, expins, ligand_target_list, ligand_target_pairs, celltypes, celltype_proportions):
+def ISM_PEM(SC, expins, ligand_target_list, ligand_target_pairs, celltypes, celltype_proportions, ligand_receptor_ct, single_cell=False):
     scdata = np.empty((len(ligand_target_list), 0))
     celltype_start_index = np.zeros(len(celltypes)+1, dtype=np.int32)
     for celltype in range(len(celltypes)):
@@ -258,16 +250,16 @@ def ISM_PEM(SC, expins, ligand_target_list, ligand_target_pairs, celltypes, cell
                 index = np.random.randint(scdata[gene][celltype_start_index[celltype]:celltype_start_index[celltype+1]].shape[0])
                 scdata[gene][celltype_start_index[celltype] + index] = 1e-20
     H = fasthist(len(ligand_target_list), len(celltypes), celltype_start_index, scdata)
-    ISM_result = ISM(ligand_target_pairs, H, len(celltypes), celltype_start_index, celltype_proportions, scdata)
-    ECS_result = PEM(expins, celltype_proportions)
+    ISM_result = ISM(ligand_target_pairs, H, len(celltypes), celltype_start_index, celltype_proportions, scdata, ligand_receptor_ct)
+    ECS_result = PEM(expins, celltype_proportions, single_cell=single_cell)
     return ISM_result, ECS_result
 
 
 
 #Calculate PEM
 #Returns PEM of dimension g x s
-@njit
-def PEM(expins, celltype_proportions):
+#@njit
+def PEM(expins, celltype_proportions, single_cell=False):
     S = expins.sum(axis=0)
     S_total = S.sum(axis=1)
     S = S/S_total.reshape((-1, 1))
@@ -275,22 +267,26 @@ def PEM(expins, celltype_proportions):
     S = S.ravel()
     S[np.isnan(S)] = 0
     S = S.reshape(shape)
-    exp_total = expins.sum(axis=2).reshape((expins.shape[0], expins.shape[1], 1))
-    E = S*exp_total
+    if not single_cell:
+        exp_total = expins.sum(axis=2).reshape((expins.shape[0], expins.shape[1], 1))
+        E = (((exp_total.sum(axis=1)/S.shape[0]).reshape([-1, 1, 1]))*(S.reshape([1, S.shape[0], S.shape[1]])))
+    else:
+        exp_total = expins.sum(axis=1)
+        E = ((exp_total/S.shape[0])[:, np.newaxis, :] * S)
     PEM = np.log10(expins/E)
     shape = PEM.shape
     PEM = PEM.ravel()
     PEM[np.isnan(PEM)] = 0
     PEM[np.isinf(PEM)] = 0
     PEM = PEM.reshape(shape)
-    PEM = (PEM*celltype_proportions).sum(axis=2)
+    PEM = (PEM*celltype_proportions)
     return PEM
 
 
 
 #Find min/max PEM/ISM
 @njit
-def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero):
+def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero, ligand_receptor_ct):
     min_PEM = 100
     min_ISM = 100
     max_PEM = -100
@@ -305,7 +301,7 @@ def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero):
                     if neighbor == -1:
                         break
                     if ST_nonzero[lig_index][spot] and ST_nonzero[target][neighbor]:
-                        PEM_sn = PEM[lig_index][spot]+PEM[target][neighbor]
+                        PEM_sn = ((PEM[lig_index][spot]+PEM[target][neighbor])*ligand_receptor_ct[lig_index]).sum()
                         ISM_sn = ISM[lig_index][tar_index][spot] + ISM[lig_index][tar_index][neighbor]
                         if PEM_sn < min_PEM:
                             min_PEM = PEM_sn
@@ -321,9 +317,9 @@ def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero):
 #Compute the neighborhood scores given
 #Return array of size ligand_target_pair vs spots
 @njit(parallel=True)
-def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero):
+def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero, ligand_receptor_ct):
     neighborhood_scores = np.zeros((ligand_target_pairs.shape[0], ligand_target_pairs.shape[1], graph.shape[0]), dtype=np.float32)
-    min_PEM, max_PEM, min_ISM, max_ISM = min_max(PEM,ISM,graph,ligand_target_pairs,ST_nonzero)
+    min_PEM, max_PEM, min_ISM, max_ISM = min_max(PEM,ISM,graph,ligand_target_pairs,ST_nonzero,ligand_receptor_ct)
     for ligand in prange(ligand_target_pairs.shape[0]):
         for target_index in prange(ligand_target_pairs.shape[1]):
             target = ligand_target_pairs[ligand][target_index]
@@ -331,17 +327,17 @@ def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero):
                 for spot in range(graph.shape[0]):
                     cumsum = 0
                     if ST_nonzero[ligand][spot] and ST_nonzero[target][spot]:
-                        PEM_lt = (PEM[ligand][spot]+PEM[target][spot])/2
+                        PEM_lt = ((PEM[ligand][spot]+PEM[target][spot])*ligand_receptor_ct[ligand]).sum()/2
                         ISM_lt = (ISM[ligand][target_index][spot]+ISM[ligand][target_index][spot])/2
                         cumsum = ((PEM_lt - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt - min_ISM)/(max_ISM - min_ISM))
                     for neighbor in graph[spot]:
                         if neighbor!=-1 and neighbor!=spot:
                             if ST_nonzero[ligand][spot] and ST_nonzero[target][neighbor]:
-                                PEM_lt1 = (PEM[ligand][spot]+PEM[target][neighbor])/2
+                                PEM_lt1 = ((PEM[ligand][spot]+PEM[target][neighbor])*ligand_receptor_ct[ligand]).sum()/2
                                 ISM_lt1 = (ISM[ligand][target_index][spot]+ISM[ligand][target_index][neighbor])/2
                                 cumsum += ((PEM_lt1 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt1 - min_ISM)/(max_ISM - min_ISM))
                             if ST_nonzero[ligand][neighbor] and ST_nonzero[target][spot]:
-                                PEM_lt2 = (PEM[ligand][neighbor]+PEM[target][spot])/2
+                                PEM_lt2 = ((PEM[ligand][neighbor]+PEM[target][spot])*ligand_receptor_ct[ligand]).sum()/2
                                 ISM_lt2 = (ISM[ligand][target_index][neighbor]+ISM[ligand][target_index][spot])/2
                                 cumsum += ((PEM_lt2 - min_PEM)/(max_PEM - min_PEM)) * ((ISM_lt2 - min_ISM)/(max_ISM - min_ISM))
                     neighborhood_scores[ligand][target_index][spot] = cumsum
@@ -349,43 +345,67 @@ def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero):
 
 #Wrapper function for get neighborhood scores
 #Return neighborhood scores: array of size ligand_target_pair vs spots OR anndata object
-def compute_neighborhood_scores(SC, ST, celltypes, celltype_proportions, graph, ligand_target_index, ligand_target_pairs, ST_nonzero, expins, genes, return_adata=True):
+def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_path, celltype_proportions_path, expins_path, single_cell=False, radius=0, return_adata=True):
     """Computes neighborhood score for each ligand-target pair across each spot.
 
-    :param SC: single cell RNA-seq data as an anndata object
-    :type SC: AnnData
-    :param ST: spatial transcriptomics data as an anndata object
-    :type ST: AnnData
-    :param celltypes: list of unique celltypes within SC
-    :type celltypes: list
-    :param celltype_proportions: proportions of celltypes within each spot in ST
-    :type celltype_proportions: ndarray
-    :param graph: neighborhood graph generated from function neighborhood
-    :type graph: ndarray
-    :param ligand_target_index: dictionary with indexed, unique, ligands and targets (generated from function get_ligand_target)
-    :type ligand_target_index: dict
-    :param ligand_target_pairs: 2D array of ligands and their corresponding targets (generated from function get_ligand_target)
-    :type ligand_target_pairs: ndarray
-    :param ST_nonzero: Boolean matrix denoting non zero values in ST
-    :type ST_nonzero: bool
-    :param expins: celltype specific mRNA abundance values for each gene estimated from cell2location
-    :type expins: ndarray
-    :param genes: List of uniques genes for which celltype specific mRNA abundance have been calculated
-    :type genes: list
+    :param SC_path: path to single cell RNA-seq data as an anndata object
+    :type SC: str
+    :param ST: path to spatial transcriptomics data as an anndata object
+    :type ST: str
+    :param pairs_path: path to a .csv file with ligand target pairs. The ligand and target are two columns in the dataframe with column labels 'ligand' and 'target'
+    :type pairs_path: str
+    :param ligand_receptor_path: path to a .csv file with ligand receptor pairs. The ligand and receptors are two columns in the dataframe with column labels 'ligand' and 'receptor'
+    :type ligand_receptor_path: str
+    :param celltype_proportions_path: path to a .csv file with celltype proportions. Rows are spots and columns are celltypes.
+    :type celltype_proportions_path: str
+    :param expins_path: path to celltype specific mRNA abundance values for each gene. These values can be estimated using cell2location.
+    :type expins: str
+    :param single_cell: Default False. Whether the spatial transcriptomic data is of single cell resolution. Set to true if you want to use radius
+    :type single_cell: bool, optional
+    :param radius: Needed when single cell set to True.
+    :type radius: float, optional
     :param return_adata: Return neighborhood scores as an anndata object with ST spatial information, defaults to True
     :type return_adata: bool, optional
     :return: neighborhood scores
     :rtype: ndarray
     """
+    #Read in ST and SC data with annotated celltype
+    ST = sc.read_h5ad(ST_path)
+    SC = sc.read_h5ad(SC_path)
+
+    #Read in ligand and targets you would like to work with
+    pairs = pd.read_csv(pairs_path)
+    ligands = pairs['ligand']
+    targets = pairs['target']
+
+    #Get list of celltypes and estimated celltype proportions
+    celltype_proportions = pd.read_csv(celltype_proportions_path, index_col=0)
+    celltypes = list(celltype_proportions.columns)
+    celltype_proportions = celltype_proportions.loc[ST.obs_names,:].to_numpy()
+
+    #Read in mRNA abundance values
+    expins = pickle.load(open(expins_path,'rb'))
+    genes = list(expins.keys())
+    expins_new = []
+    for gene in expins.keys():
+        expins_new.append(expins[gene].loc[ST.obs_names, celltypes].to_numpy())
+    expins = np.array(expins_new)
+
+    #Compute neighborhood from ST data
+    graph = neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology=single_cell, radius=radius)
+
+    #Get list of unique ligands, targets and ligand-target pairs
+    ligand_target_index, ligand_target_pairs, ST_nonzero, ligand_receptor_ct = get_ligand_target(ligands, targets, ST, SC, genes, ligand_receptor_path, celltypes)
+
     #Get gene indices
     gene_indices = []
     ligand_target_list = list(ligand_target_index.keys())
     for x in ligand_target_list:
         gene_indices.append(genes.index(x))
     #Compute ECS and ISM values
-    ISM_result, ECS_result = ISM_PEM(SC, expins, list(ligand_target_index.keys()), ligand_target_pairs, celltypes, celltype_proportions)
+    ISM_result, ECS_result = ISM_PEM(SC, expins, list(ligand_target_index.keys()), ligand_target_pairs, celltypes, celltype_proportions, ligand_receptor_ct, single_cell=single_cell)
     ECS_result = ECS_result[gene_indices]
-    neighborhood_scores = get_neighborhood_score(ligand_target_pairs, graph, ECS_result, ISM_result, ST_nonzero)
+    neighborhood_scores = get_neighborhood_score(ligand_target_pairs, graph, ECS_result, ISM_result, ST_nonzero, ligand_receptor_ct)
     if return_adata:
         adata = toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list)
         return adata

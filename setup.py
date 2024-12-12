@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import codecs
 import os
 
-VERSION = '0.5.0'
+VERSION = '0.9.0'
 DESCRIPTION = 'Charting spatial ligand-target activity using Renoir'
 
 # Setting up

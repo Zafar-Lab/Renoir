@@ -32,7 +32,11 @@ release = '0.5.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-'sphinx.ext.autodoc','nbsphinx','myst_parser',]
+    'sphinx.ext.autodoc', 'nbsphinx', 'myst_parser',
+]
+
+# Do not execute notebooks, render saved outputs only
+nbsphinx_execute = 'never'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

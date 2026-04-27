@@ -13,9 +13,8 @@ build:
     python: "3.11"
 
 sphinx:
-  configuration: docs/source/conf.py  # path to your conf.py
+  configuration: docs/source/conf.py
 
 python:
   install:
     - requirements: docs/requirements.txt
-  system_packages: true

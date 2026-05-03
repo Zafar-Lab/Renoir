@@ -33,7 +33,9 @@ Available functionality
    :caption: Contents:
 
    install_usage
-   notebooks/BC_tutorial
+   notebooks/renoir_visium_tutorial
+   notebooks/renoir_cosmx_tutorial
+   notebooks/renoir_visiumhd_tutorial
    api.rst
 
 

@@ -49,10 +49,33 @@ exclude_patterns = []
 
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#
-html_theme = 'alabaster'
+html_theme = "pydata_sphinx_theme"
+
+html_theme_options = {
+    "github_url": "https://github.com/Zafar-Lab/Renoir",
+    "navbar_end": ["navbar-icon-links"],
+    "logo": {
+        "text": "Renoir",
+    },
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/Zafar-Lab/Renoir",
+            "icon": "fa-brands fa-github",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/Renoir/",
+            "icon": "fa-brands fa-python",
+        },
+    ],
+    "show_version_warning_banner": True,
+    "footer_start": ["copyright"],
+    "footer_end": ["theme-version"],
+}
+
+# Optional: add a logo image if you have one
+# html_logo = "_static/renoir_logo.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

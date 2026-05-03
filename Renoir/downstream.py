@@ -798,7 +798,7 @@ def ligand_ranking(neighbscore, celltype, scrna, ligand_receptor_pairs, ligand_t
         for target in targets:
             target_ct = lrt_dict[ligand][target]
             temp = celltype_df_copy.loc[:,list(set(ligand_ct+target_ct))]
-            spots = temp[(temp.select_dtypes(include=['number']) != 0).all(1)].index
+            spots = temp[(temp.select_dtypes(include=['number']) != 0).any(axis=1)].index#spots = temp[(temp.select_dtypes(include=['number']) != 0).all(1)].index
             ligand_score[ligand][target] = neighbscore_df.loc[spots,ligand+':'+target].mean()
     
     targets = []
@@ -826,10 +826,10 @@ def ligand_ranking(neighbscore, celltype, scrna, ligand_receptor_pairs, ligand_t
     
     # Plot avg neighborhood scores at colocalized spots ranked by ligand ranking score
     ligand_score_df = pd.DataFrame(ligand_score).fillna(0).T
-    ligand_score_df =(ligand_score_df-ligand_score_df.min())/(ligand_score_df.max()-ligand_score_df.min())
+    ligand_score_df = (ligand_score_df-ligand_score_df.min())/(ligand_score_df.max()-ligand_score_df.min())
     ligand_score_df = ligand_score_df.fillna(0)
     ligand_score_df = ligand_score_df.loc[sorted(ligand_ranking, key=lambda k:ligand_ranking[k], reverse=True),:]
-    ligand_score_df = ligand_score_df.loc[~(ligand_score_df==0).all(axis=1)]
+    #ligand_score_df = ligand_score_df.loc[~(ligand_score_df==0).all(axis=1)]
     ligand_score_df = ligand_score_df.loc[:, (ligand_score_df != 0).any(axis=0)]
     # Sort columns
     col_order = []

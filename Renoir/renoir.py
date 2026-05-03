@@ -4,8 +4,201 @@ import numpy as np
 from numba import njit, prange
 import pandas as pd
 import scanpy as sc
+import scipy.sparse as sp
+from spatialdata.models import TableModel
 import pickle
 import pdb
+from tqdm import tqdm
+
+
+#Register anndata into spatialdata object
+#Returns: spatialdata.SpatialData; updated spatialdata object
+def register_table(
+    sdata,
+    adata,
+    table_name,
+    region,
+    reference_table_key,
+    instance_key='instance_id',
+    region_key='region',
+):
+    """Add a copy of an AnnData object into a SpatialData object as a named table.
+
+    SpatialData requires every table to declare which spatial element it
+    annotates via three metadata fields set in ``.uns['spatialdata_attrs']``:
+    ``region``, ``region_key``, and ``instance_key``. This function sets all
+    three up automatically by aligning the AnnData ``obs_names`` against a
+    reference table already present in ``sdata``. Observations present in the
+    reference table but absent in ``adata`` are filled with zeros, so the
+    registered table is always index-complete with respect to the reference.
+
+    :param sdata: The SpatialData object to add the table to. Modified in-place.
+    :type sdata: spatialdata.SpatialData
+    :param adata: The AnnData to register. Its ``obs_names`` must be a subset
+        of the ``obs_names`` of the reference table in ``sdata``. Observations
+        not present in ``adata`` are padded with zeros in the registered table.
+    :type adata: anndata.AnnData
+    :param table_name: Key under which the new table will be stored in
+        ``sdata.tables``.
+    :type table_name: str
+    :param region: Name of the shape element in ``sdata`` that this table
+        annotates, e.g. ``'A1_square_016um'`` or ``'cell_boundaries'``.
+    :type region: str
+    :param reference_table_key: Key of an existing table in ``sdata.tables``
+        whose ``obs_names`` and ``instance_key`` column are used as the
+        alignment reference, e.g. ``'square_016um'``.
+    :type reference_table_key: str
+    :param instance_key: Name of the ``obs`` column that holds integer instance
+        IDs matching the row index of the shape element. Taken from the
+        reference table and propagated to the registered table.
+    :type instance_key: str
+    :param region_key: Name of the ``obs`` column that holds the region name
+        for each row. Created automatically.
+    :type region_key: str
+    :raises KeyError: If ``reference_table_key`` is not found in
+        ``sdata.tables``, or if ``region`` is not found in ``sdata.shapes``.
+    :raises ValueError: If ``instance_key`` is not present in the reference
+        table's ``obs``, or if none of the ``adata`` ``obs_names`` are found
+        in the reference table.
+    :returns: The same SpatialData object passed in, modified in-place with the
+        new table accessible at ``sdata.tables[table_name]``.
+    :rtype: spatialdata.SpatialData
+    """
+
+    if reference_table_key not in sdata.tables:
+        raise KeyError(
+            f"'{reference_table_key}' not found in sdata.tables. "
+            f"Available tables: {list(sdata.tables.keys())}"
+        )
+    if region not in sdata.shapes:
+        raise KeyError(
+            f"'{region}' not found in sdata.shapes. "
+            f"Available shapes: {list(sdata.shapes.keys())}"
+        )
+
+    ref_table = sdata.tables[reference_table_key]
+
+    if instance_key not in ref_table.obs.columns:
+        raise ValueError(
+            f"'{instance_key}' not found in the obs of reference table "
+            f"'{reference_table_key}'. Available columns: {ref_table.obs.columns.tolist()}"
+        )
+
+    ref_obs_names = ref_table.obs_names
+    shared        = adata.obs_names.intersection(ref_obs_names)
+
+    if len(shared) == 0:
+        raise ValueError(
+            f"None of the adata obs_names match the obs_names of reference "
+            f"table '{reference_table_key}'. Check that both use the same "
+            "spot or cell ID format."
+        )
+
+    n_dropped = len(adata) - len(shared)
+    if n_dropped > 0:
+        print(
+            f"  Note: {n_dropped} obs in adata not found in '{reference_table_key}' "
+            "and will be dropped."
+        )
+
+    # Reindex adata.X to the full reference index, filling missing rows with 0
+    adata_df  = adata[shared].to_df().reindex(ref_obs_names).fillna(0)
+
+    # Build the padded AnnData aligned to the full reference index
+    adata_full      = sc.AnnData(X=adata_df.values, var=adata[shared].var.copy())
+    adata_full.obs_names = ref_obs_names
+
+    # Carry over obs columns from adata where available, fill missing with 0
+    for col in adata.obs.columns:
+        series = adata.obs[col].reindex(ref_obs_names)
+        if pd.api.types.is_categorical_dtype(series):
+            series = series.cat.add_categories('N/A').fillna('N/A')
+        else:
+            series = series.fillna(0)
+        adata_full.obs[col] = series.values
+
+    # Copy uns from the input adata (colour palettes, etc.)
+    adata_full.uns = adata.uns.copy()
+
+    # Propagate region and instance metadata from the reference table
+    adata_full.obs[region_key]   = pd.Categorical([region] * adata_full.n_obs)
+    adata_full.obs[instance_key] = ref_table.obs[instance_key].values
+
+    adata_full = TableModel.parse(
+        adata_full,
+        region       = region,
+        region_key   = region_key,
+        instance_key = instance_key,
+    )
+
+    sdata.tables[table_name] = adata_full
+    print(
+        f"Registered '{table_name}' → sdata.tables['{table_name}'] "
+        f"({adata_full.n_obs} obs × {adata_full.n_vars} vars, "
+        f"{len(shared)} non-zero rows)"
+    )
+    return sdata
+
+
+#Compute celltype-specific gene expression
+#Returns: dict: {gene:csr matrix of spot vs celltype}
+def compute_celltype_expression(expr, ct, genes, celltypes, spot_indices):
+    """Compute celltype-specific gene expression as sparse matrices.
+
+    For each gene, the celltype-specific expression at a spot is defined as the
+    product of the gene's expression at that spot and the celltype proportion at
+    that spot, yielding a spot × celltype matrix. All matrices are returned as
+    Compressed Sparse Row (CSR) sparse matrices of dtype ``float64``.
+
+    :param expr: Expression matrix of shape ``(n_spots, n_genes)``.
+    :type expr: numpy.ndarray
+    :param ct: Celltype proportion matrix of shape ``(n_spots, n_celltypes)``.
+    :type ct: numpy.ndarray
+    :param genes: List of gene names in the same column order as ``expr``.
+    :type genes: list
+    :param celltypes: List of celltype names in the same column order as ``ct``.
+    :type celltypes: list
+    :param spot_indices: List of spot identifiers in the same row order as
+        ``expr`` and ``ct``.
+    :type spot_indices: list
+    :raises ValueError: If the number of rows in ``expr`` and ``ct`` do not
+        match, or if the lengths of ``genes``, ``celltypes``, or
+        ``spot_indices`` are inconsistent with the shapes of ``expr`` and
+        ``ct``.
+    :returns: Dictionary mapping each gene name to a CSR sparse matrix of
+        shape ``(n_spots, n_celltypes)`` and dtype ``float64``, where entry
+        ``[i, j]`` is the expression of the gene at spot ``spot_indices[i]``
+        weighted by the proportion of celltype ``celltypes[j]`` at that spot.
+    :rtype: dict[str, scipy.sparse.csr_matrix]
+    """
+    if expr.shape[0] != ct.shape[0]:
+        raise ValueError(
+            f"expr and ct must have the same number of rows (spots), "
+            f"got {expr.shape[0]} and {ct.shape[0]}."
+        )
+    if expr.shape[1] != len(genes):
+        raise ValueError(
+            f"Length of genes ({len(genes)}) must match the number of "
+            f"columns in expr ({expr.shape[1]})."
+        )
+    if ct.shape[1] != len(celltypes):
+        raise ValueError(
+            f"Length of celltypes ({len(celltypes)}) must match the number of "
+            f"columns in ct ({ct.shape[1]})."
+        )
+    if expr.shape[0] != len(spot_indices):
+        raise ValueError(
+            f"Length of spot_indices ({len(spot_indices)}) must match the "
+            f"number of rows in expr and ct ({expr.shape[0]})."
+        )
+
+    expr = expr.astype(np.float64)
+    ct   = ct.astype(np.float64)
+
+    return {
+        gene: sp.csr_matrix(expr[:, i, np.newaxis] * ct)
+        for i, gene in enumerate(genes)
+    }
 
 
 #Get unique set of ligands and targets and indexed ligand target pairs
@@ -345,7 +538,7 @@ def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero, lig
 
 #Wrapper function for get neighborhood scores
 #Return neighborhood scores: array of size ligand_target_pair vs spots OR anndata object
-def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_path, celltype_proportions_path, expins_path, single_cell=False, radius=0, return_adata=True):
+def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_path, celltype_proportions_path, expins_path=None, single_cell=False, use_radius=False, radius=0, return_adata=True):
     """Computes neighborhood score for each ligand-target pair across each spot.
 
     :param SC_path: path to single cell RNA-seq data as an anndata object
@@ -362,6 +555,8 @@ def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_pa
     :type expins: str
     :param single_cell: Default False. Whether the spatial transcriptomic data is of single cell resolution. Set to true if you want to use radius
     :type single_cell: bool, optional
+    :param use_radius: Needed when single cell set to True.
+    :type use_radius: bool, optional
     :param radius: Needed when single cell set to True.
     :type radius: float, optional
     :param return_adata: Return neighborhood scores as an anndata object with ST spatial information, defaults to True
@@ -370,6 +565,7 @@ def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_pa
     :rtype: ndarray
     """
     #Read in ST and SC data with annotated celltype
+    print('Loading datasets/celltypes')
     ST = sc.read_h5ad(ST_path)
     SC = sc.read_h5ad(SC_path)
 
@@ -383,29 +579,49 @@ def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_pa
     celltypes = list(celltype_proportions.columns)
     celltype_proportions = celltype_proportions.loc[ST.obs_names,:].to_numpy()
 
-    #Read in mRNA abundance values
-    expins = pickle.load(open(expins_path,'rb'))
-    genes = list(expins.keys())
-    expins_new = []
-    for gene in expins.keys():
-        expins_new.append(expins[gene].loc[ST.obs_names, celltypes].to_numpy())
-    expins = np.array(expins_new)
-
-    #Compute neighborhood from ST data
-    graph = neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology=single_cell, radius=radius)
+    print('Loading expins')
+    if expins_path is not None:
+        #Read in mRNA abundance values
+        expins = pickle.load(open(expins_path,'rb'))
+    else:
+        shared_genes = np.intersect1d(ST.var_names, SC.var_names)
+        expins = compute_celltype_expression(ST.to_df()[shared_genes].to_numpy(), celltype_proportions, shared_genes, celltypes, ST.obs_names)
+    genes = [x for x in expins.keys() if x not in ['cells', 'celltypes']]
 
     #Get list of unique ligands, targets and ligand-target pairs
+    print('Fetching ligand/target pairs')
     ligand_target_index, ligand_target_pairs, ST_nonzero, ligand_receptor_ct = get_ligand_target(ligands, targets, ST, SC, genes, ligand_receptor_path, celltypes)
+    ligand_target_list = list(ligand_target_index.keys())
+    
+    print(len(ligand_target_list), 'ligand targets present')
+    print(len(ligand_target_pairs), 'ligand target pairs present')
+    genes = [x for x in expins.keys() if x in ligand_target_list]
+    
+    expins_new = []
+    if isinstance(expins[genes[0]], pd.DataFrame):
+        for gene in tqdm(genes):
+            expins_new.append(expins[gene].loc[ST.obs_names, celltypes].to_numpy())
+    else:
+        for gene in tqdm(genes):
+            expins_new.append(pd.DataFrame(expins[gene].toarray(), index=expins['cells'], columns=expins['celltypes']).loc[ST.obs_names, celltypes].astype("float64").to_numpy())
+    expins = np.array(expins_new)
+    del expins_new
+
+    #Compute neighborhood from ST data
+    print('Computing graph')
+    graph = neighborhood(ST.obs['array_row'].tolist(), ST.obs['array_col'].tolist(), technology=use_radius, radius=radius)
 
     #Get gene indices
+    print('Computing neighborhood scores')
     gene_indices = []
-    ligand_target_list = list(ligand_target_index.keys())
     for x in ligand_target_list:
         gene_indices.append(genes.index(x))
     #Compute ECS and ISM values
     ISM_result, ECS_result = ISM_PEM(SC, expins, list(ligand_target_index.keys()), ligand_target_pairs, celltypes, celltype_proportions, ligand_receptor_ct, single_cell=single_cell)
     ECS_result = ECS_result[gene_indices]
     neighborhood_scores = get_neighborhood_score(ligand_target_pairs, graph, ECS_result, ISM_result, ST_nonzero, ligand_receptor_ct)
+    
+    print('Creating adata')
     if return_adata:
         adata = toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list)
         return adata

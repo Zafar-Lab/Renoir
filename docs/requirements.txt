@@ -1,10 +1,4 @@
+sphinx
 pydata-sphinx-theme
 nbsphinx
-myst-parser
-anndata
-scanpy
-numpy
-hdbscan
-dynamicTreeCut
-plotly
-distinctipy
+ipykernel

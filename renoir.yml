@@ -1,6 +1,7 @@
 name: renoir
 # Renoir conda environment
 # Converted from Dockerfile (Python 3.12.4, Ubuntu 22.04 base)
+# Includes the SpatialData ecosystem.
 #
 # Create the environment:
 #   conda env create -f environment.yml
@@ -13,6 +14,12 @@ name: renoir
 #
 # Note: cell2location must be installed separately into its own environment.
 #   See https://cell2location.readthedocs.io/en/latest/installation.html
+#
+# Note on SpatialData: as of Feb 2025, spatialdata and its companion packages
+# (spatialdata-io, spatialdata-plot) cannot be installed from conda-forge because
+# some of their transitive dependencies are pinned to outdated versions there.
+# They are therefore installed via pip below, which always carries the latest releases.
+# See: https://spatialdata.scverse.org/en/latest/installation.html
 
 channels:
   - conda-forge
@@ -49,8 +56,17 @@ dependencies:
   - matplotlib
   - seaborn
 
-  # ── pip-only packages (not available on conda-forge) ─────────────────────
+  # ── pip-only packages ─────────────────────────────────────────────────────
   - pip
   - pip:
+      # Renoir helpers
       - harmonypy==0.0.10       # batch-correction helper; pip-only
       - dynamictreecut==0.1.1   # dynamic tree cutting for hierarchical clustering; pip-only
+
+      # SpatialData ecosystem — pip required (conda-forge builds are outdated as of Feb 2025)
+      # Core framework: FAIR storage format + unified spatial omics data model
+      - spatialdata
+      # I/O readers for common platforms (Visium, VisiumHD, CosMx, Xenium, Merscope, etc.)
+      - spatialdata-io
+      # Static plotting library built on top of spatialdata
+      - spatialdata-plot

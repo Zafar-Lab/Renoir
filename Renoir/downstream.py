@@ -27,6 +27,34 @@ from matplotlib.patches import Patch
 
 # create hdbscan/dynamic hclust gene clusters
 def get_msig(species, path=None):
+    """Load an MSigDB gene-set DataFrame for use with :func:`create_cluster`.
+
+    Returns a DataFrame with columns ``gs_name`` (gene-set name) and
+    ``gene_symbol`` (target gene symbol) that can be passed directly to
+    :func:`create_cluster` as the ``msig`` argument.
+
+    :param species: Species whose bundled gene-set file should be loaded.
+        Pass ``'human'`` or ``'mouse'`` to use the packaged MSigDB files, or
+        ``'custom'`` together with ``path`` to supply your own CSV.
+    :type species: str
+    :param path: Path to a custom MSigDB-formatted CSV file. Required when
+        ``species='custom'``, ignored otherwise. The file must contain at
+        least two columns named ``gs_name`` and ``gene_symbol``.
+        Defaults to None.
+    :type path: str, optional
+    :raises: Exception if ``species`` is not ``'human'``, ``'mouse'``, or
+        ``'custom'`` with a valid ``path``.
+    :return: DataFrame with columns ``gs_name`` and ``gene_symbol``.
+    :rtype: pandas.DataFrame
+
+    Example::
+
+        # Use the bundled human gene sets
+        msig = Renoir.get_msig('human')
+
+        # Use a custom file
+        msig = Renoir.get_msig('custom', path='/data/msig_human_WP_H_KEGG_new.csv')
+    """
     if species == 'human':
         return pd.read_csv('./msigdb/msig_human_WP_H_KEGG')
     elif species == 'mouse':
@@ -272,6 +300,46 @@ def downstream_analysis(neighbscore, ltpair_clusters=None, resolution=0.8, n_mar
 
 
 def spot_v_spot(neighbscore, celltype, resolution=0.8, ltpair_clusters=None, n_markers=20, n_top=20, pdf_path=None):
+    """Identify communication domains using both ligand-target scores and cell-type cosine similarity.
+
+    An alternative to :func:`downstream_analysis` that clusters spots by
+    combining two complementary signals:
+
+    1. **Ligand-target activity** — the neighbourhood score matrix reduced to
+       pathway/cluster PCs (via truncated SVD).
+    2. **Cell-type cosine similarity** — pairwise cosine similarity between
+       spots based on their cell-type abundance profiles.
+
+    The two similarity matrices are averaged before Leiden clustering, so the
+    resulting communication domains reflect both *what signalling is happening*
+    and *which cell types are co-localised*. All intermediate plots (UMAP,
+    spatial map, DE heatmap, top-pair heatmap, cosine-similarity heatmaps,
+    cell-type heatmap, and pathway-PC heatmaps) are written to a multi-page
+    PDF at ``pdf_path``.
+
+    :param neighbscore: AnnData object of pre-computed neighbourhood scores
+        (output of :func:`Renoir.renoir.compute_neighborhood_scores`).
+    :type neighbscore: AnnData
+    :param celltype: AnnData object with per-spot cell-type proportions or
+        abundances (e.g., from cell2location).
+    :type celltype: AnnData
+    :param resolution: Leiden clustering resolution. Higher values produce
+        more, finer-grained domains. Defaults to 0.8.
+    :type resolution: float, optional
+    :param ltpair_clusters: Dictionary mapping pathway/cluster names to their
+        constituent ligand-target pair names, as returned by
+        :func:`create_cluster`. Must be provided (not ``None``).
+    :type ltpair_clusters: dict
+    :param n_markers: Number of top DE ligand-target pairs to include in the
+        marker heatmap per domain. Defaults to 20.
+    :type n_markers: int, optional
+    :param n_top: Number of highly expressed ligand-target pairs to display
+        per domain. Defaults to 20.
+    :type n_top: int, optional
+    :param pdf_path: File path where the multi-page diagnostic PDF is saved.
+        All figures are written to this file; nothing is shown interactively.
+    :type pdf_path: str
+    """
     neighbscore_copy = neighbscore.copy()
     sc.pp.filter_genes(neighbscore_copy, min_cells=1)
     neighbscore_df = pd.DataFrame(neighbscore_copy.X.toarray())
@@ -680,30 +748,78 @@ def pcs_v_neighbscore(neighbscore, ltpair_clusters=None, pdf_path=None, spatialf
     pdf.close()    
 
 def ligand_ranking(neighbscore, celltype, scrna, ligand_receptor_pairs, ligand_target_regulatory_potential, domain, receptor_exp=0.1, markers={'top':100}, domain_celltypes=['top',5], celltype_colors={'auto':True}):
-    """_summary_
+    """Rank ligands by their predicted activity in a given communication domain.
 
-    :param neighbscore: _description_
-    :type neighbscore: _type_
-    :param celltype: _description_
-    :type celltype: _type_
-    :param scrna: _description_
-    :type scrna: _type_
-    :param ligand_receptor_pairs: _description_
-    :type ligand_receptor_pairs: _type_
-    :param ligand_target_regulatory_potential: _description_
-    :type ligand_target_regulatory_potential: _type_
-    :param domain: _description_
-    :type domain: _type_
-    :param receptor_exp: _description_, defaults to 0.1
+    For a chosen Leiden domain, this function identifies which ligands are
+    most likely driving the domain's ligand-target signature. Ligands are
+    scored by how well their NicheNet regulatory potential across target genes
+    explains the domain's DE marker pairs, subject to a minimum receptor
+    expression filter (only ligands whose receptor is expressed in at least
+    ``receptor_exp`` fraction of domain spots are considered). The result is
+    a multi-panel figure showing the ligand ranking, the cell types that
+    express each top ligand's receptor, and the spatial location of the domain.
+
+    :param neighbscore: AnnData object of neighbourhood scores with Leiden
+        domain labels in ``obs['leiden']`` (set by :func:`downstream_analysis`
+        or :func:`spot_v_spot`). The raw score matrix must be stored in
+        ``neighbscore.raw`` before calling this function
+        (``neighbscore.raw = neighbscore.copy()``).
+    :type neighbscore: AnnData
+    :param celltype: AnnData object with per-spot cell-type proportions or
+        abundances (e.g., from cell2location).
+    :type celltype: AnnData
+    :param scrna: Matched scRNA-seq reference AnnData. Used to measure
+        receptor expression per cell type within the domain.
+    :type scrna: AnnData
+    :param ligand_receptor_pairs: DataFrame of curated ligand-receptor pairs
+        with columns ``'ligand'`` and ``'receptor'`` (e.g., from NATMI or
+        OmniPath).
+    :type ligand_receptor_pairs: pandas.DataFrame
+    :param ligand_target_regulatory_potential: Precomputed NicheNet-style
+        ligand → target regulatory potential scores, supplied as a pickle-loaded
+        object (dict or DataFrame) mapping each ligand to its top target scores.
+    :type ligand_target_regulatory_potential: dict or pandas.DataFrame
+    :param domain: Leiden domain ID to analyse (string label, e.g. ``'0'``).
+    :type domain: str
+    :param receptor_exp: Minimum fraction of spots in the domain that must
+        express a ligand's receptor for that ligand to be considered.
+        Defaults to 0.1.
     :type receptor_exp: float, optional
-    :param markers: _description_, defaults to {'top':100}
-    :type markers: dict, optional
-    :param domain_celltypes: _description_, defaults to ['top',5]
+    :param markers: Controls which domain marker pairs are used as the ranking
+        signal. Pass ``{'top': N}`` to use the top-N DE marker pairs, or a
+        list of explicit pair names. Defaults to ``{'top': 100}``.
+    :type markers: dict or list, optional
+    :param domain_celltypes: Controls which cell types are included in the
+        analysis. Pass ``['top', N]`` to use the top-N most abundant cell
+        types in the domain, or an explicit list of cell-type names.
+        Defaults to ``['top', 5]``.
     :type domain_celltypes: list, optional
-    :param celltype_colors: _description_, defaults to {'auto':True}
+    :param celltype_colors: Dictionary mapping cell-type names to hex colour
+        strings for consistent colouring across plots. Pass
+        ``{'auto': True}`` to use automatic colours. Defaults to
+        ``{'auto': True}``.
     :type celltype_colors: dict, optional
-    :return: _description_
-    :rtype: _type_
+    :return: Multi-panel matplotlib Figure containing the ligand ranking bar
+        chart, receptor-expressing cell-type breakdown, and the spatial domain
+        map. Call ``fig.set_size_inches(24, 12)`` before displaying or saving.
+    :rtype: matplotlib.figure.Figure
+
+    Example::
+
+        fig = Renoir.ligand_ranking(
+            neighborhood_scores,
+            celltype,
+            SC,
+            ligand_receptor_pairs,
+            ligand_target_regulatory_potential,
+            domain='0',
+            receptor_exp=0.05,
+            markers={'top': 100},
+            domain_celltypes=['top', 5],
+            celltype_colors=celltype_colors,
+        )
+        fig.set_size_inches(24, 12)
+        fig.savefig('domain_0_ligand_ranking.png', dpi=150, bbox_inches='tight')
     """
     sc.pp.filter_genes(neighbscore, min_cells=1)
     neighbscore_df = neighbscore.raw.to_adata().to_df()

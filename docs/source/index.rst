@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Renoir
-=============
+======
 
 Renoir is an information-theory-based scoring metric that delineates
 spatial communication domains that are cell-type, ligand, and target
@@ -21,23 +21,28 @@ targets.
 Available functionality
 -----------------------
 
--  Spatial map of ligand-target interactions
--  Spatial map of pathway/De novo ligand-target set activities
--  Inference of ligand-target and celltype specific communication
-   domains
--  Ranking of ligand specific activity across communication domains
--  Overview of ligand-target-celltype interactions (Sankey plot)
+- Spatial map of ligand-target interactions
+- Spatial map of pathway/De novo ligand-target set activities
+- Inference of ligand-target and celltype specific communication domains
+- Ranking of ligand specific activity across communication domains
+- Overview of ligand-target-celltype interactions (Sankey plot)
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :hidden:
 
    install_usage
+   api.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Tutorials
+   :hidden:
+
+   notebooks/renoir_downstream_showcase
    notebooks/renoir_visium_tutorial
    notebooks/renoir_cosmx_tutorial
    notebooks/renoir_visiumhd_tutorial
-   api.rst
-
 
 Indices and tables
 ==================

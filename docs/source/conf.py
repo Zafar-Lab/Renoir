@@ -40,6 +40,7 @@ autodoc_mock_imports = [
     "squidpy",
     "anndata",
     "numpy",
+    "numba",
     "pandas",
     "scipy",
     "sklearn",

@@ -35,6 +35,26 @@ extensions = [
     'sphinx.ext.autodoc', 'nbsphinx', 'myst_parser',
 ]
 
+autodoc_mock_imports = [
+    "scanpy",
+    "squidpy",
+    "anndata",
+    "numpy",
+    "pandas",
+    "scipy",
+    "sklearn",
+    "seaborn",
+    "matplotlib",
+    "hdbscan",
+    "plotly",
+    "harmonypy",
+    "dynamictreecut",
+    "distinctipy",
+    "spatialdata",
+    "spatialdata_io",
+    "spatialdata_plot",
+]
+
 # Do not execute notebooks, render saved outputs only
 nbsphinx_execute = 'never'
 
@@ -45,6 +65,9 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
+
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
 
 
 # -- Options for HTML output -------------------------------------------------

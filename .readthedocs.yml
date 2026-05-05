@@ -17,4 +17,6 @@ sphinx:
 
 python:
   install:
+    - method: pip
+      path: .                        # installs Renoir from setup.py
     - requirements: docs/requirements.txt

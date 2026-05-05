@@ -97,6 +97,7 @@ html_theme_options = {
     "show_version_warning_banner": True,
     "footer_start": ["copyright"],
     "footer_end": ["theme-version"],
+    "header_links_before_dropdown": 3,
 }
 
 # Optional: add a logo image if you have one

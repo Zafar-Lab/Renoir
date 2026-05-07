@@ -74,17 +74,20 @@ napoleon_numpy_docstring = True
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = "pydata_sphinx_theme"
+html_theme = 'furo'
 
 html_theme_options = {
-    "navigation_depth": 3,
-    "show_nav_level": 2,
-    "navbar_end": ["theme-switcher", "navbar-icon-links"],  # adds light/dark toggle
-    "secondary_sidebar_items": ["page-toc"],
-    "show_toc_level": 2,
+    "sidebar_hide_name": False,
+    "navigation_with_keys": True,
+    "light_css_variables": {
+        "color-brand-primary": "#0072B2",
+        "color-brand-content": "#0072B2",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#4CA3DD",
+        "color-brand-content": "#4CA3DD",
+    },
 }
-
-html_theme = 'pydata_sphinx_theme'
 
 # Optional: add a logo image if you have one
 # html_logo = "_static/renoir_logo.png"

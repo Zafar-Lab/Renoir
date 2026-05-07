@@ -3,3 +3,4 @@ pydata-sphinx-theme
 nbsphinx
 ipykernel
 myst-parser
+furo

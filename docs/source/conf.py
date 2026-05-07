@@ -77,28 +77,14 @@ napoleon_numpy_docstring = True
 html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
-    "github_url": "https://github.com/Zafar-Lab/Renoir",
-    "navbar_end": ["navbar-icon-links"],
-    "logo": {
-        "text": "Renoir",
-    },
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/Zafar-Lab/Renoir",
-            "icon": "fa-brands fa-github",
-        },
-        {
-            "name": "PyPI",
-            "url": "https://pypi.org/project/Renoir/",
-            "icon": "fa-brands fa-python",
-        },
-    ],
-    "show_version_warning_banner": True,
-    "footer_start": ["copyright"],
-    "footer_end": ["theme-version"],
-    "header_links_before_dropdown": 3,
+    "navigation_depth": 3,
+    "show_nav_level": 2,
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],  # adds light/dark toggle
+    "secondary_sidebar_items": ["page-toc"],
+    "show_toc_level": 2,
 }
+
+html_theme = 'pydata_sphinx_theme'
 
 # Optional: add a logo image if you have one
 # html_logo = "_static/renoir_logo.png"

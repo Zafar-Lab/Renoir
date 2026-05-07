@@ -586,6 +586,8 @@ def compute_neighborhood_scores(SC_path, ST_path, pairs_path, ligand_receptor_pa
     else:
         shared_genes = np.intersect1d(ST.var_names, SC.var_names)
         expins = compute_celltype_expression(ST.to_df()[shared_genes].to_numpy(), celltype_proportions, shared_genes, celltypes, ST.obs_names)
+        expins['cells'] = ST.obs_names.copy()
+        expins['celltypes'] = celltypes.copy()
     genes = [x for x in expins.keys() if x not in ['cells', 'celltypes']]
 
     #Get list of unique ligands, targets and ligand-target pairs

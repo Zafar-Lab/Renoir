@@ -43,6 +43,7 @@ Available functionality
    notebooks/renoir_visium_tutorial
    notebooks/renoir_cosmx_tutorial
    notebooks/renoir_visiumhd_tutorial
+   notebooks/renoir_xenium_tutorial
 
 Indices and tables
 ==================

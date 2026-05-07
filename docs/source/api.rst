@@ -5,10 +5,6 @@ This page documents every public function in Renoir.
 Internal helper functions (``entropy``, ``ISM``, ``PEM``, ``min_max``, etc.) are
 intentionally omitted — they are implementation details not intended for direct use.
 
-.. contents:: Contents
-   :local:
-   :depth: 1
-
 ----
 
 Core functions (``Renoir.renoir``)

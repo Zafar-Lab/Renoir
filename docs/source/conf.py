@@ -87,6 +87,10 @@ html_theme_options = {
         "color-brand-primary": "#4CA3DD",
         "color-brand-content": "#4CA3DD",
     },
+    "navbar_center": ["navbar-nav"],
+    "secondary_sidebar_items": [],
+    "navigation_depth": 2,
+    "header_links_before_dropdown": 2,
 }
 
 # Optional: add a logo image if you have one
@@ -97,3 +101,6 @@ html_logo = "_static/renoir_logo.png"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 html_css_files = ['custom.css']
+html_sidebars = {
+    "**": []
+}

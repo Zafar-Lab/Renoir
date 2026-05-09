@@ -103,5 +103,11 @@ html_logo = "_static/renoir_logo.png"
 html_static_path = ['_static']
 html_css_files = ['custom.css']
 html_sidebars = {
-    "**": ["sidebar-nav-bs", "search-field.html"],
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/scroll-end.html",
+    ]
 }

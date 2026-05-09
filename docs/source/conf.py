@@ -89,8 +89,9 @@ html_theme_options = {
     },
     "navbar_center": ["navbar-nav"],
     "secondary_sidebar_items": [],
-    "navigation_depth": 2,
+    "navigation_depth": 1,
     "header_links_before_dropdown": 2,
+    "show_toc_level": 1,
 }
 
 # Optional: add a logo image if you have one
@@ -102,5 +103,5 @@ html_logo = "_static/renoir_logo.png"
 html_static_path = ['_static']
 html_css_files = ['custom.css']
 html_sidebars = {
-    "**": []
+    "**": ["sidebar-nav-bs", "search-field.html"],
 }

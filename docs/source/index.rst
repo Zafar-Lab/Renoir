@@ -33,6 +33,7 @@ Available functionality
 
    install_usage
    api.rst
+   tips
 
 .. toctree::
    :maxdepth: 1

@@ -64,7 +64,6 @@ jobs:
       # 5. Upload coverage to Codecov (optional but recommended)
       # ------------------------------------------------------------------
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml

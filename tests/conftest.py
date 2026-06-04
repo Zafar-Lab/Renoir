@@ -52,7 +52,7 @@ LIGANDS_LIST = ["GENE0","GENE1","GENE2","GENE3","GENE4",
                 "GENE0","GENE1","GENE2","GENE3","GENE4","GENE0","GENE1"]
 TARGETS_LIST = ["GENE5","GENE6","GENE7","GENE8","GENE9",
                 "GENE6","GENE7","GENE8","GENE9","GENE5","GENE8","GENE9"]
-PAIR_NAMES       = [f"{l}:{t}" for l, t in zip(LIGANDS_LIST, TARGETS_LIST)]
+PAIR_NAMES       = [f"{lgt}:{tgt}" for lgt, tgt in zip(LIGANDS_LIST, TARGETS_LIST)]
 LIGANDS_UNIQUE   = list(dict.fromkeys(LIGANDS_LIST))  # GENE0..GENE4
 TARGET_GENES     = list(dict.fromkeys(TARGETS_LIST))   # GENE5..GENE9
 

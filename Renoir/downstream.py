@@ -792,8 +792,6 @@ def sankeyPlot(
             target_v_clust[tar_clust]
         )  #  / target_v_clust_sum[tar_clust.split(':')[1]]
 
-    target_v_clust_avg = sum(value_temp) / len(value_temp)
-
     for tar_clust in target_v_clust.keys():
         links.append(
             {
@@ -806,8 +804,6 @@ def sankeyPlot(
     value_temp = []
     for pair in ltpairs:
         value_temp.append(temp_sum[pair])  # / len(ltpair_avg.keys()))
-
-    ligand_target_avg = sum(value_temp) / len(value_temp)
 
     for pair in ltpairs:
         ligand = pair.split(":")[0]

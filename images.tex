@@ -1,0 +1,73 @@
+\clearpage
+\section*{Figure Legends}
+\singlespacing
+% \captionsetup{labelformat=empty}
+% \noindent\begin{minipage}{\textwidth}
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/Overview.png}
+    \caption{\textbf{Overview of Renoir.} (a) Renoir utilizes spatial transcriptomic data and its corresponding cell type-annotated scRNA-seq data to infer spatial neighborhood activity scores for a set of curated ligand-target pairs at each spot. (b) To estimate the neighborhood activity score for a ligand-target pair $l-t$ at a given spot $S1$; Renoir utilizes cell type abundance, cell type-specific mRNA abundance for each spot as inferred by a cell type deconvolution module, gene entropy and mutual information between l-t specific to cell types. (c) Renoir performs various downstream tasks based on the ligand-target neighborhood scores - inference of spatial communication domains and domain-specific ligand-target activities, spatial mapping of pathway activity and ranking of ligand activity.}
+    \label{Overview}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/Benchmark.png}
+    \caption{\textbf{Renoir outperforms state-of-the-art CCC inference methods in inferring ligand-target activities.} (a) Overview of the simulation strategy used for benchmarking. (b) Comparison of Renoir, SpatialDM, COMMOT, and stLearn for the simulated dataset for the ligand-target pair \textit{A2M-MYC} simulated based on the human intestine dataset. Positive and negative reference spots are shown in the tissue. Regions 1, 2 and 3 contain negative spots for which SpatialDM, COMMOT, and stLearn falesly inferred activity of the pair but Renoir correctly inferred the absence of activity. (c) Comparison of Renoir, SpatialDM, COMMOT, and stLearn in terms of spatial activity accuracy over all the ligand-target pairs across the tissue types. (d) ARI and NMI comparison of the spatial communication domains computed based on the ligand-target activity scores inferred by Renoir, SpatialDM, COMMOT, and stLearn. (e) Qualitative comparison of the spatial communication domains inferred by Renoir, SpatialDM, COMMOT, and stLearn for DLPFC sample 151673.}
+    \label{Benchmark}
+\end{figure}
+
+% \end{minipage}
+% \clearpage
+% \captionof{figure}{\textbf{Overview of Renoir.} (a) Renoir infers spatial neighborhood activity scores for a set of curated ligand-target pairs for each spot in a spatial transcriptomics data by integrating with cell type-annotated scRNA-seq data from the same tissue. The neighborhood of a spot includes other neighboring spots within a specific radius. (b) In order to estimate the neighborhood activity score for a ligand-target pair l-t at a given spot S1, Renoir takes into account the cell type abundances and cell type-specific mRNA abundances for spots as inferred by a cell type deconvolution module as well as gene entropy and mutual information between l-t specific to cell types. (c) Renoir performs various downstream tasks based on the ligand-target neighborhood scores - inference of spatial communication domains and domain-specific ligand-target activities, spatial mapping of pathway activity and ranking of ligand activity.}
+
+% \newpage
+% \captionof{figure}{\textbf{Overview of Renoir}: (a) Using scRNA-seq data, its corresponding celltype annotations, spatial transcriptomics data, and a set of curated ligand-target pairs, Renoir calculates spatially enriched neighbourhood scores for the curated set of ligand-target pairs for a given sample. (b) In order to estimate the neighborhood score for a ligand-target pair l-t at a given spot S1, Renoir utilizes an information theory based scoring metric that is particular to spatially resolved cell type abundance and prior single cell specific ligand and target interactions (c) Renoir utilizes the neighborhood scores generated to delineate spatial communication regions and enable a variety of downstream tasks.}
+% \label{Overview}
+% \clearpage
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/MB.png}
+    \caption{\textbf{Renoir identifies distinct communication domains in mouse brain.} (a) Spatial communication domains with distinct latent embeddings inferred by Renoir based on ligand-target neighborhood scores for two mouse brain sections. (b) Distribution of spots in spatial communication domains across different anatomical regions of the mouse brain. The rows correspond to spatial communication domains (in both S1 and S2) and columns correspond to known brain regions. Each cell represents the proportion of spots of a communication domain in the corresponding anatomical brain region. (c) Differentially active ligand-target interactions across the communication domains for sample S1. (d) - (e) Characterization of ligand-target interactions between regional astrocyte subtypes and other co-localized cell types in sample S1. (d) Ligands expressed by regional astrocyte subtypes activating target genes in other cell types. (e) Target genes in regional astrocyte subtypes activated by ligands expressed by other co-localized cell types. (f) Communication domain-specific ranking of ligands based on cumulative activities over target genes expressed by major cell types in the domain for sample S1. Top three ligands for each of eight communication domains are represented. Stacked color bars represent the cell types that express the ligand (right) and target (top). (g) Spatial map of MAPK SIGNALING and NEUROTROPHIN SIGNALING pathway activity across the spots in sample S1.}
+    \label{Fig MB}
+\end{figure}
+% \clearpage
+% \captionof{figure}{\textbf{Renoir identifies distinct communication domains in mouse brain.} (a) Spatial communication domains with distinct latent embeddings inferred by Renoir based on ligand-target neighborhood scores for two mouse brain sections. (b) Distribution of spots in spatial communication domains across different anatomical regions of the mouse brain. The rows correspond to spatial communication domains (in both S1 and S2) and columns correspond to known brain regions. Each cell represents the proportion of spots of a communication domain in the corresponding anatomical brain region. (c) Differentially active ligand-target interactions across the communication domains for sample S1. (d) - (e) Characterization of ligand-target interactions between regional astrocyte subtypes and other co-localized cell types. (d) Ligands expressed by regional astrocyte subtypes activating target genes in other cell types. (e) Target genes in regional astrocyte subtypes activated by ligands expressed by other co-localized cell types. (f) Communication domain-specific ranking of ligands based on cumulative activities over target genes expressed by major cell types in the domain. Top three ligands for each of eight communication domains are represented. Stacked color bars represent the cell types that express the ligand (right) and target (top). (g) Spatial map of MAPK signalling and NEUROTROPHIN SIGNALING pathway activity across the spots in sample S1.}
+
+% \newpage
+
+% \clearpage
+% \captionof{figure}{\textbf{Fig MB}: Renoir identifies distinct communication domains in mouse brain. (a) Anatomical region specific communication domains with distinct latent embedding uncovered by Renoir. The domains were similarly distributed across the two samples S1 and S2 of 2987 spots and 2576 spots respectively. (b) A frequency map of communication domains inferred by Renoir distinctively corresponded to known anatomical regions. Each cell represents the proportion of spots of a communication domain in the corresponding anatomical regions. (c) Differentially expressed ligand-target interactions over sample S1 were observed across each communication domain with region and cell type specific activity. (d) - (e) Spatial characterization of ligand-target interactions with the ligand expressed by regional astrocyte subtypes and target expressed by region specific cell types in (d) and with the target expressed by regional astrocyte subtypes and ligand expressed by region specific cell types in (e) for sample S1. Color bars represent ligand and target celltypes from left to right. (f) Domain specific ligand ranking over neighborhood scores and prior regulatory potential scores, ranks region specific ligand activity across 8 communication domains in sample S1. Top 3 ligands were represented for each domain. Color bars represent the associated ligand (right) and target (top) cell types. (g) Spatial map of MAPK signalling and NEUROTROPHIN SIGNALING pathway activity across sample S1.}
+% \label{Fig MB}
+% \newpage
+
+
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/BC.png}
+    \caption{\textbf{Renoir uncovers intratumor spatial communication sub-domains in triple negative breast cancer tissue}. (a) The original histopathological annotations of H\&E-stained triple negative breast cancer tissue (CID44971 \citep{Wu2021}, $n=1322$ spots) showing six pathologically distinct regions. (b) Spatial communication domains inferred by Renoir based on ligand-target neighbor activity scores. The communication domains display distinct latent embeddings as can be seen from UMAP. (c) Distribution of spots in inferred communication domains across pathological annotations as in a. Each cell represents the proportion of spots of a communication domain in the corresponding pathological region. (d) Spatial map of neighborhood activity scores for the ligand-target pairs (e) Differentially active ligand-target pairs inferred by Renoir across all communication domains. (f) Cell type-specific ligand-target interactions for the major cell types in domains 1, 2, and 3. The inner color bar represents the cell types of the ligand (left) and target (top) and the outer color bar represents the communication domain. Each cell represents the average Pearson correlation between the ligand-target neighborhood scores and the abundances of the cell types expressing the ligand and target across the spots pertaining to the domain being considered. (g) - (h) Domain-specific ligand ranking based on their cumulative activities over target genes expressed by major cell types in the domain. (g) Top six ligands for communication domains 0, 1, 2, and 3 are represented. (h) represents the unique ligand-target pairs within each domain. Stacked color bars represent the cell types that express the ligand (right) and target (top). (i) Spatial map of four hallmark pathways - IL6 JAK STAT SIGNALING, TGF BETA SIGNALING, WNT SIGNALING and MAPK signalling pathway activity.}
+\label{Fig BC}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/FL.png}
+    \caption{\textbf{Renoir identifies hepatocyte-macrophage interactions in developing fetal liver}. (a) Preparation of FFPE fetal liver tissue (b) Spatial communication domains inferred by Renoir based on ligand-target neighborhood scores. (c) Distribution of UMI count across the tissue section. (d) Spatial map of neighborhood activity scores for the ligand-target pairs (e) Ranking of ligands based on their cumulative activities over target genes expressed by major cell types in domain 0. (f) UMAP plot of latent embedding for hepatocyte population in scRNA-seq data, cells are colored as either \textit{PLG}$^+$ or \textit{PLG}$^-$. (g) Cell type abundances of Hepatocytes (\textit{PLG}$^+$ and \textit{PLG}$^-$) and \textit{FOLR2}$^+$ Macrophages overlaid onto the spots in ST data. (h) Volcano plot depicting differentially expressed genes between \textit{PLG}$^+$ and \textit{PLG}$^-$ Hepatocytes ($-log_{10}P$ threshold = 32 and $log_2fold change$ threshold = 0.5). (i) Spatial similarity measures between \textit{PLG:MARCO} neighborhood activity scores and cell type abundances of \textit{PLG}$^+$, \textit{PLG}$^-$ Hepatocytes and \textit{FOLR2}$^+$ Macrophages.}
+\label{Fig FL}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    % \includegraphics[width=0.95\textwidth,keepaspectratio]{images/HCC.png}
+    \caption{\textbf{Renoir identifies onco-fetal interactions in hepatocellular carcinoma}. (a) Ranking of activity of ligands expressed by onco-fetal cell types with other major cell types present in the neighborhoods of the onco-fetal cells. Stacked color bars represent the cell types that express the ligand (left) and target (bottom). (b) Distribution of ligand-target interactions across target cell types. The target cell types include major non-onco fetal cell types present in the neighborhoods of the onco-fetal cell types and onco-fetal cell types (c) (left) Spatial map of cell type specific neighborhood activity scores across cell types associated with the ligand and target for $VEGFA:KDR$ and $CXCL12:CXCR4$ respectively (fov 10); (right) Spatial distribution of cell types associated with the ligand and target for $VEGFA:KDR$ and $CXCL12:CXCR4$ respectively (fov 10) (d) Top pathways in the \textit{MUC6}$^{+}$ bi-potent cells targeted by the oncofetal ligands (e) (From left to right) Spatial map of cell type specific neighborhood activity scores across cell types associated with $IL6:PTGS2$; Spatial distribution of cell types associated with $IL6:PTGS2$.}
+\label{Fig HCC}
+\end{figure}
+% \clearpage
+% \captionof{figure}{
+
+% \newpage
+
+% \clearpage
+% \captionof{figure}{

@@ -42,11 +42,9 @@ dependencies:
 
   # ── Single-cell / spatial analysis ───────────────────────────────────────
   - scanpy=1.10.4
-  - squidpy=1.6.2
   - anndata                    # pulled in by scanpy; pinned here for explicitness
 
   # ── Clustering ────────────────────────────────────────────────────────────
-  - hdbscan=0.8.40
   - leidenalg                  # required by scanpy for Leiden clustering
   - python-igraph              # required by leidenalg
 
@@ -62,10 +60,13 @@ dependencies:
       # Renoir helpers
       - harmonypy==0.0.10       # batch-correction helper; pip-only
       - dynamictreecut==0.1.1   # dynamic tree cutting for hierarchical clustering; pip-only
+      - squidpy
+      - hdbscan==0.8.40
+      - "setuptools<82"
 
       # SpatialData ecosystem — pip required (conda-forge builds are outdated as of Feb 2025)
       # Core framework: FAIR storage format + unified spatial omics data model
-      - spatialdata
+      - spatialdata==0.7.0
       # I/O readers for common platforms (Visium, VisiumHD, CosMx, Xenium, Merscope, etc.)
       - spatialdata-io
       # Static plotting library built on top of spatialdata

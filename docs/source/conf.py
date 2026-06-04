@@ -14,16 +14,16 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Renoir'
-copyright = '2023, Narein Rao'
-author = 'Narein Rao'
+project = "Renoir"
+copyright = "2023, Narein Rao"
+author = "Narein Rao"
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.0-beta'
+release = "1.0.0-beta"
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,7 +32,9 @@ release = '1.0.0-beta'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc', 'nbsphinx', 'myst_parser',
+    "sphinx.ext.autodoc",
+    "nbsphinx",
+    "myst_parser",
 ]
 
 autodoc_mock_imports = [
@@ -58,10 +60,10 @@ autodoc_mock_imports = [
 ]
 
 # Do not execute notebooks, render saved outputs only
-nbsphinx_execute = 'never'
+nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -74,7 +76,7 @@ napoleon_numpy_docstring = True
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = 'furo'
+html_theme = "furo"
 
 html_theme_options = {
     "sidebar_hide_name": False,
@@ -100,8 +102,8 @@ html_logo = "_static/renoir_logo.png"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-html_css_files = ['custom.css']
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 html_sidebars = {
     "**": [
         "sidebar/brand.html",

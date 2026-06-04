@@ -18,17 +18,15 @@ import pytest
 import Renoir
 from Renoir import renoir as rn
 
-from conftest import (
-    N_SPOTS, N_GENES, GENE_NAMES, LIGANDS_LIST, TARGETS_LIST, CELLTYPES
-)
+from conftest import GENE_NAMES, LIGANDS_LIST, TARGETS_LIST, CELLTYPES  # noqa: F401
 
 
 # ===========================================================================
 # neighborhood
 # ===========================================================================
 
-class TestNeighborhood:
 
+class TestNeighborhood:
     def test_visium_returns_2d_array(self):
         rng = np.random.default_rng(0)
         x = rng.uniform(0, 500, 20)
@@ -59,29 +57,28 @@ class TestNeighborhood:
         return a valid ndarray for garbage input.
         """
         try:
-            result = rn.neighborhood([0, 1], [0, 1],
-                                     technology="invalid", radius=0)
+            result = rn.neighborhood([0, 1], [0, 1], technology="invalid", radius=0)
             # If it doesn't raise, the result should not be a normal 2-D array
             assert result is None or not isinstance(result, np.ndarray)
         except Exception:
-            pass   # raising is also acceptable
+            pass  # raising is also acceptable
 
 
 # ===========================================================================
 # compute_celltype_expression
 # ===========================================================================
 
-class TestComputeCelltypeExpression:
 
+class TestComputeCelltypeExpression:
     @pytest.fixture
     def inputs(self):
         rng = np.random.default_rng(10)
         n_spots, n_genes, n_ct = 10, 8, 3
         expr = rng.integers(0, 10, (n_spots, n_genes)).astype(float)
-        ct   = rng.dirichlet([1] * n_ct, size=n_spots)
-        genes     = [f"GENE{i}" for i in range(n_genes)]
-        celltypes = [f"CT{i}"   for i in range(n_ct)]
-        spot_idx  = list(range(n_spots))
+        ct = rng.dirichlet([1] * n_ct, size=n_spots)
+        genes = [f"GENE{i}" for i in range(n_genes)]
+        celltypes = [f"CT{i}" for i in range(n_ct)]
+        spot_idx = list(range(n_spots))
         return expr, ct, genes, celltypes, spot_idx
 
     def test_returns_dict(self, inputs):
@@ -97,11 +94,13 @@ class TestComputeCelltypeExpression:
         expr, ct, genes, celltypes, spot_idx = inputs
         result = rn.compute_celltype_expression(*inputs)
         n_spots = expr.shape[0]
-        n_ct    = len(celltypes)
+        n_ct = len(celltypes)
         for gene, mat in result.items():
             arr = mat.toarray() if sp.issparse(mat) else mat
-            assert arr.shape == (n_spots, n_ct), \
-                f"{gene}: expected ({n_spots},{n_ct}), got {arr.shape}"
+            assert arr.shape == (
+                n_spots,
+                n_ct,
+            ), f"{gene}: expected ({n_spots},{n_ct}), got {arr.shape}"
 
     def test_values_non_negative(self, inputs):
         result = rn.compute_celltype_expression(*inputs)
@@ -113,6 +112,7 @@ class TestComputeCelltypeExpression:
 # ===========================================================================
 # get_ligand_target
 # ===========================================================================
+
 
 class TestGetLigandTarget:
     """
@@ -127,9 +127,17 @@ class TestGetLigandTarget:
         # are guaranteed to be in var_names and expins_genes
         ligands = LIGANDS_LIST[:4]
         targets = TARGETS_LIST[:4]
-        expins_genes = GENE_NAMES   # all genes — nothing gets filtered out
+        expins_genes = GENE_NAMES  # all genes — nothing gets filtered out
         celltypes = CELLTYPES
-        return ligands, targets, st_adata, sc_adata, expins_genes, lr_pairs_csv, celltypes
+        return (
+            ligands,
+            targets,
+            st_adata,
+            sc_adata,
+            expins_genes,
+            lr_pairs_csv,
+            celltypes,
+        )
 
     def test_returns_tuple_of_four(self, inputs):
         result = rn.get_ligand_target(*inputs)
@@ -150,9 +158,10 @@ class TestGetLigandTarget:
     def test_mismatched_lengths_raise(self, st_adata, sc_adata, lr_pairs_csv):
         with pytest.raises(Exception):
             rn.get_ligand_target(
-                ["GENE0", "GENE1"],   # 2 ligands
-                ["GENE5"],            # 1 target
-                st_adata, sc_adata,
+                ["GENE0", "GENE1"],  # 2 ligands
+                ["GENE5"],  # 1 target
+                st_adata,
+                sc_adata,
                 GENE_NAMES,
                 lr_pairs_csv,
                 CELLTYPES,
@@ -163,11 +172,10 @@ class TestGetLigandTarget:
 # compute_neighborhood_scores (integration — skipped in fast runs)
 # ===========================================================================
 
-class TestComputeNeighborhoodScores:
 
+class TestComputeNeighborhoodScores:
     @pytest.mark.integration
-    def test_returns_anndata(self, st_h5ad, sc_h5ad, lt_pairs_csv,
-                             lr_pairs_csv, celltype_proportions_csv):
+    def test_returns_anndata(self, st_h5ad, sc_h5ad, lt_pairs_csv, lr_pairs_csv, celltype_proportions_csv):
         result = Renoir.compute_neighborhood_scores(
             SC_path=sc_h5ad,
             ST_path=st_h5ad,
@@ -178,8 +186,7 @@ class TestComputeNeighborhoodScores:
         assert isinstance(result, ad.AnnData)
 
     @pytest.mark.integration
-    def test_var_names_are_lt_pairs(self, st_h5ad, sc_h5ad, lt_pairs_csv,
-                                    lr_pairs_csv, celltype_proportions_csv):
+    def test_var_names_are_lt_pairs(self, st_h5ad, sc_h5ad, lt_pairs_csv, lr_pairs_csv, celltype_proportions_csv):
         result = Renoir.compute_neighborhood_scores(
             SC_path=sc_h5ad,
             ST_path=st_h5ad,
@@ -191,8 +198,7 @@ class TestComputeNeighborhoodScores:
             assert ":" in varname, f"Expected 'ligand:target' format, got: {varname}"
 
     @pytest.mark.integration
-    def test_single_cell_mode(self, st_h5ad, sc_h5ad, lt_pairs_csv,
-                              lr_pairs_csv, celltype_proportions_csv):
+    def test_single_cell_mode(self, st_h5ad, sc_h5ad, lt_pairs_csv, lr_pairs_csv, celltype_proportions_csv):
         result = Renoir.compute_neighborhood_scores(
             SC_path=sc_h5ad,
             ST_path=st_h5ad,
@@ -210,6 +216,7 @@ class TestComputeNeighborhoodScores:
 # register_table
 # ===========================================================================
 
+
 class TestRegisterTable:
     """Tests for Renoir.renoir.register_table (VisiumHD / SpatialData workflow)."""
 
@@ -224,21 +231,22 @@ class TestRegisterTable:
         except ImportError:
             pytest.skip("spatialdata not installed")
 
-        n      = st_adata.n_obs
+        n = st_adata.n_obs
         coords = st_adata.obsm["spatial"]
 
         # Circles require a 'radius' column in the GeoDataFrame
         gdf = gpd.GeoDataFrame(
-            {"geometry": [Point(float(x), float(y)) for x, y in coords],
-             "radius":   np.ones(n) * 10.0},
+            {
+                "geometry": [Point(float(x), float(y)) for x, y in coords],
+                "radius": np.ones(n) * 10.0,
+            },
             index=pd.RangeIndex(n),
         )
         shapes = ShapesModel.parse(gdf)
 
         # TableModel.parse requires the region_key column to already be in obs
         ref_obs = pd.DataFrame(
-            {"instance_id": np.arange(n),
-             "region":      pd.Categorical(["circles"] * n)},
+            {"instance_id": np.arange(n), "region": pd.Categorical(["circles"] * n)},
             index=st_adata.obs_names,
         )
         ref_adata = ad.AnnData(
@@ -248,9 +256,9 @@ class TestRegisterTable:
         )
         ref_adata = TableModel.parse(
             ref_adata,
-            region       = "circles",
-            region_key   = "region",
-            instance_key = "instance_id",
+            region="circles",
+            region_key="region",
+            instance_key="instance_id",
         )
 
         sdata = sd.SpatialData(
@@ -323,6 +331,7 @@ class TestRegisterTable:
 # compute_celltype_expression — error-path coverage
 # ===========================================================================
 
+
 class TestComputeCelltypeExpressionErrors:
     """Tests for the ValueError raises in compute_celltype_expression."""
 
@@ -330,11 +339,11 @@ class TestComputeCelltypeExpressionErrors:
     def base(self):
         rng = np.random.default_rng(20)
         n_spots, n_genes, n_ct = 8, 6, 3
-        expr      = rng.integers(0, 10, (n_spots, n_genes)).astype(float)
-        ct        = rng.dirichlet([1] * n_ct, size=n_spots)
-        genes     = [f"G{i}" for i in range(n_genes)]
+        expr = rng.integers(0, 10, (n_spots, n_genes)).astype(float)
+        ct = rng.dirichlet([1] * n_ct, size=n_spots)
+        genes = [f"G{i}" for i in range(n_genes)]
         celltypes = [f"CT{i}" for i in range(n_ct)]
-        spot_idx  = list(range(n_spots))
+        spot_idx = list(range(n_spots))
         return expr, ct, genes, celltypes, spot_idx
 
     def test_mismatched_expr_ct_rows_raises(self, base):

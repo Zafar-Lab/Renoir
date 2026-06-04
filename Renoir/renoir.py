@@ -66,14 +66,10 @@ def register_table(
 
     if reference_table_key not in sdata.tables:
         raise KeyError(
-            f"'{reference_table_key}' not found in sdata.tables. "
-            f"Available tables: {list(sdata.tables.keys())}"
+            f"'{reference_table_key}' not found in sdata.tables. " f"Available tables: {list(sdata.tables.keys())}"
         )
     if region not in sdata.shapes:
-        raise KeyError(
-            f"'{region}' not found in sdata.shapes. "
-            f"Available shapes: {list(sdata.shapes.keys())}"
-        )
+        raise KeyError(f"'{region}' not found in sdata.shapes. " f"Available shapes: {list(sdata.shapes.keys())}")
 
     ref_table = sdata.tables[reference_table_key]
 
@@ -95,10 +91,7 @@ def register_table(
 
     n_dropped = len(adata) - len(shared)
     if n_dropped > 0:
-        print(
-            f"  Note: {n_dropped} obs in adata not found in '{reference_table_key}' "
-            "and will be dropped."
-        )
+        print(f"  Note: {n_dropped} obs in adata not found in '{reference_table_key}' " "and will be dropped.")
 
     # Reindex adata.X to the full reference index, filling missing rows with 0
     adata_df = adata[shared].to_df().reindex(ref_obs_names).fillna(0)
@@ -172,18 +165,15 @@ def compute_celltype_expression(expr, ct, genes, celltypes, spot_indices):
     """
     if expr.shape[0] != ct.shape[0]:
         raise ValueError(
-            f"expr and ct must have the same number of rows (spots), "
-            f"got {expr.shape[0]} and {ct.shape[0]}."
+            f"expr and ct must have the same number of rows (spots), " f"got {expr.shape[0]} and {ct.shape[0]}."
         )
     if expr.shape[1] != len(genes):
         raise ValueError(
-            f"Length of genes ({len(genes)}) must match the number of "
-            f"columns in expr ({expr.shape[1]})."
+            f"Length of genes ({len(genes)}) must match the number of " f"columns in expr ({expr.shape[1]})."
         )
     if ct.shape[1] != len(celltypes):
         raise ValueError(
-            f"Length of celltypes ({len(celltypes)}) must match the number of "
-            f"columns in ct ({ct.shape[1]})."
+            f"Length of celltypes ({len(celltypes)}) must match the number of " f"columns in ct ({ct.shape[1]})."
         )
     if expr.shape[0] != len(spot_indices):
         raise ValueError(
@@ -194,9 +184,7 @@ def compute_celltype_expression(expr, ct, genes, celltypes, spot_indices):
     expr = expr.astype(np.float64)
     ct = ct.astype(np.float64)
 
-    return {
-        gene: sp.csr_matrix(expr[:, i, np.newaxis] * ct) for i, gene in enumerate(genes)
-    }
+    return {gene: sp.csr_matrix(expr[:, i, np.newaxis] * ct) for i, gene in enumerate(genes)}
 
 
 # Get unique set of ligands and targets and indexed ligand target pairs
@@ -250,9 +238,7 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database, cellt
     for gene in ligands_subset + targets_subset:
         if gene not in ligands_and_targets:
             ligands_and_targets.append(gene)
-    ligands_and_targets = dict(
-        zip(ligands_and_targets, range(len(ligands_and_targets)))
-    )
+    ligands_and_targets = dict(zip(ligands_and_targets, range(len(ligands_and_targets))))
     ligand_target_pairs = []
     for index in range(len(ligands_subset)):
         ligand_index = ligands_and_targets[ligands_subset[index]]
@@ -262,16 +248,12 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database, cellt
         if target_index not in ligand_target_pairs[ligand_index]:
             ligand_target_pairs[ligand_index].append(target_index)
 
-    ST_nonzero = np.array(
-        np.transpose(ST[:, list(ligands_and_targets.keys())].X.toarray()), dtype=bool
-    )
+    ST_nonzero = np.array(np.transpose(ST[:, list(ligands_and_targets.keys())].X.toarray()), dtype=bool)
     pad_ligand_target = len(max(ligand_target_pairs, key=len))
 
     # Get possible ligand receptor interactions
     ligand_receptor_dict = pd.read_csv(lr_database)
-    receptor_list = list(
-        set(ligand_receptor_dict["receptor"].unique()).intersection(SC_copy.var_names)
-    )
+    receptor_list = list(set(ligand_receptor_dict["receptor"].unique()).intersection(SC_copy.var_names))
     ligand_receptor_dict = (
         ligand_receptor_dict[ligand_receptor_dict["receptor"].isin(receptor_list)]
         .groupby("ligand")["receptor"]
@@ -296,12 +278,7 @@ def get_ligand_target(ligands, targets, ST, SC, expins_genes, lr_database, cellt
 
     return (
         ligands_and_targets,
-        np.asarray(
-            [
-                ligand + [-1] * (pad_ligand_target - len(ligand))
-                for ligand in ligand_target_pairs
-            ]
-        ),
+        np.asarray([ligand + [-1] * (pad_ligand_target - len(ligand)) for ligand in ligand_target_pairs]),
         ST_nonzero,
         ligand_receptor_ct,
     )
@@ -317,27 +294,15 @@ def create_graph(X_coord, Y_coord, technology, radius=0):
             for spot2 in prange(len(X_coord)):
                 if (
                     (spot1 == spot2)
-                    or (
-                        abs(X_coord[spot1] - X_coord[spot2]) == 1
-                        and abs(Y_coord[spot1] - Y_coord[spot2]) == 1
-                    )
-                    or (
-                        X_coord[spot1] == X_coord[spot2]
-                        and abs(Y_coord[spot1] - Y_coord[spot2]) == 2
-                    )
+                    or (abs(X_coord[spot1] - X_coord[spot2]) == 1 and abs(Y_coord[spot1] - Y_coord[spot2]) == 1)
+                    or (X_coord[spot1] == X_coord[spot2] and abs(Y_coord[spot1] - Y_coord[spot2]) == 2)
                 ):
                     graph[spot1].append(spot2)
 
     elif technology:
         for spot1 in prange(len(X_coord)):
             for spot2 in prange(len(X_coord)):
-                if (
-                    math.sqrt(
-                        (X_coord[spot1] - X_coord[spot2]) ** 2
-                        + (Y_coord[spot1] - Y_coord[spot2]) ** 2
-                    )
-                    <= radius
-                ):
+                if math.sqrt((X_coord[spot1] - X_coord[spot2]) ** 2 + (Y_coord[spot1] - Y_coord[spot2]) ** 2) <= radius:
                     graph[spot1].append(spot2)
 
     for spot in range(len(X_coord)):
@@ -378,9 +343,7 @@ def entropy(values):
     values = values.flatten()
     values = values[values != 0]
     n = np.sum(values)
-    return -1 * np.sum((values / n) * np.log(values / n)) + (
-        (len(values) - 1) / (2 * n)
-    )
+    return -1 * np.sum((values / n) * np.log(values / n)) + ((len(values) - 1) / (2 * n))
 
 
 # Custom histogram2d
@@ -425,61 +388,17 @@ def ISM(
             if target != -1:
                 MI_ligand = np.zeros(n_celltypes, dtype=np.float64)
                 for celltype in range(n_celltypes):
-                    ligand_data = scdata[ligand][
-                        celltype_start_index[celltype] : celltype_start_index[
-                            celltype + 1
-                        ]
-                    ]
-                    target_data = scdata[target][
-                        celltype_start_index[celltype] : celltype_start_index[
-                            celltype + 1
-                        ]
-                    ]
+                    ligand_data = scdata[ligand][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]
+                    target_data = scdata[target][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]
                     ligand_bin = np.linspace(
-                        np.min(
-                            scdata[ligand][
-                                celltype_start_index[celltype] : celltype_start_index[
-                                    celltype + 1
-                                ]
-                            ]
-                        ),
-                        np.max(
-                            scdata[ligand][
-                                celltype_start_index[celltype] : celltype_start_index[
-                                    celltype + 1
-                                ]
-                            ]
-                        ),
-                        math.ceil(
-                            math.sqrt(
-                                celltype_start_index[celltype + 1]
-                                - celltype_start_index[celltype]
-                            )
-                        )
-                        + 1,
+                        np.min(scdata[ligand][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]),
+                        np.max(scdata[ligand][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]),
+                        math.ceil(math.sqrt(celltype_start_index[celltype + 1] - celltype_start_index[celltype])) + 1,
                     )
                     target_bin = np.linspace(
-                        np.min(
-                            scdata[target][
-                                celltype_start_index[celltype] : celltype_start_index[
-                                    celltype + 1
-                                ]
-                            ]
-                        ),
-                        np.max(
-                            scdata[target][
-                                celltype_start_index[celltype] : celltype_start_index[
-                                    celltype + 1
-                                ]
-                            ]
-                        ),
-                        math.ceil(
-                            math.sqrt(
-                                celltype_start_index[celltype + 1]
-                                - celltype_start_index[celltype]
-                            )
-                        )
-                        + 1,
+                        np.min(scdata[target][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]),
+                        np.max(scdata[target][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]),
+                        math.ceil(math.sqrt(celltype_start_index[celltype + 1] - celltype_start_index[celltype])) + 1,
                     )
                     table = hist2d(ligand_data, target_data, ligand_bin, target_bin)
                     Hl = H[ligand][celltype]
@@ -491,9 +410,7 @@ def ISM(
                         if ISM_temp <= 0 or np.isnan(ISM_temp) or np.isinf(ISM_temp):
                             ISM_temp = 1
                     MI_ligand[celltype] = -1 * np.log10(ISM_temp)
-                ISM_result[ligand][target_index] = (
-                    celltype_proportions * MI_ligand
-                ).sum(axis=1)
+                ISM_result[ligand][target_index] = (celltype_proportions * MI_ligand).sum(axis=1)
     return ISM_result
 
 
@@ -533,32 +450,14 @@ def fasthist(n_ligand_target, n_celltypes, celltype_start_index, scdata):
     H = np.zeros((n_ligand_target, n_celltypes))
     for gene in range(n_ligand_target):
         for celltype in range(n_celltypes):
-            start = np.min(
-                scdata[gene][
-                    celltype_start_index[celltype] : celltype_start_index[celltype + 1]
-                ]
-            )
-            stop = np.max(
-                scdata[gene][
-                    celltype_start_index[celltype] : celltype_start_index[celltype + 1]
-                ]
-            )
-            num = (
-                math.ceil(
-                    np.sqrt(
-                        celltype_start_index[celltype + 1]
-                        - celltype_start_index[celltype]
-                    )
-                )
-                + 1
-            )
+            start = np.min(scdata[gene][celltype_start_index[celltype] : celltype_start_index[celltype + 1]])
+            stop = np.max(scdata[gene][celltype_start_index[celltype] : celltype_start_index[celltype + 1]])
+            num = math.ceil(np.sqrt(celltype_start_index[celltype + 1] - celltype_start_index[celltype])) + 1
             bin_temp = np.linspace(start, stop, num)
             bin_temp += 1e-15
             bin_temp[0] -= 1e-15
             hist, _ = np.histogram(
-                scdata[gene][
-                    celltype_start_index[celltype] : celltype_start_index[celltype + 1]
-                ],
+                scdata[gene][celltype_start_index[celltype] : celltype_start_index[celltype + 1]],
                 bins=bin_temp,
             )
             H[gene][celltype] = entropy(hist)
@@ -596,22 +495,9 @@ def ISM_PEM(
     celltype_start_index[len(celltypes)] = scdata.shape[1]
     for gene in range(len(ligand_target_list)):
         for celltype in range(len(celltypes)):
-            if (
-                np.sum(
-                    scdata[gene][
-                        celltype_start_index[celltype] : celltype_start_index[
-                            celltype + 1
-                        ]
-                    ]
-                )
-                == 0
-            ):
+            if np.sum(scdata[gene][celltype_start_index[celltype] : celltype_start_index[celltype + 1]]) == 0:
                 index = np.random.randint(
-                    scdata[gene][
-                        celltype_start_index[celltype] : celltype_start_index[
-                            celltype + 1
-                        ]
-                    ].shape[0]
+                    scdata[gene][celltype_start_index[celltype] : celltype_start_index[celltype + 1]].shape[0]
                 )
                 scdata[gene][celltype_start_index[celltype] + index] = 1e-20
     H = fasthist(len(ligand_target_list), len(celltypes), celltype_start_index, scdata)
@@ -641,9 +527,7 @@ def PEM(expins, celltype_proportions, single_cell=False):
     S = S.reshape(shape)
     if not single_cell:
         exp_total = expins.sum(axis=2).reshape((expins.shape[0], expins.shape[1], 1))
-        E = ((exp_total.sum(axis=1) / S.shape[0]).reshape([-1, 1, 1])) * (
-            S.reshape([1, S.shape[0], S.shape[1]])
-        )
+        E = ((exp_total.sum(axis=1) / S.shape[0]).reshape([-1, 1, 1])) * (S.reshape([1, S.shape[0], S.shape[1]]))
     else:
         exp_total = expins.sum(axis=1)
         E = (exp_total / S.shape[0])[:, np.newaxis, :] * S
@@ -674,14 +558,8 @@ def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero, ligand_receptor_ct
                     if neighbor == -1:
                         break
                     if ST_nonzero[lig_index][spot] and ST_nonzero[target][neighbor]:
-                        PEM_sn = (
-                            (PEM[lig_index][spot] + PEM[target][neighbor])
-                            * ligand_receptor_ct[lig_index]
-                        ).sum()
-                        ISM_sn = (
-                            ISM[lig_index][tar_index][spot]
-                            + ISM[lig_index][tar_index][neighbor]
-                        )
+                        PEM_sn = ((PEM[lig_index][spot] + PEM[target][neighbor]) * ligand_receptor_ct[lig_index]).sum()
+                        ISM_sn = ISM[lig_index][tar_index][spot] + ISM[lig_index][tar_index][neighbor]
                         if PEM_sn < min_PEM:
                             min_PEM = PEM_sn
                         if PEM_sn > max_PEM:
@@ -696,16 +574,12 @@ def min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero, ligand_receptor_ct
 # Compute the neighborhood scores given
 # Return array of size ligand_target_pair vs spots
 @njit(parallel=True)
-def get_neighborhood_score(
-    ligand_target_pairs, graph, PEM, ISM, ST_nonzero, ligand_receptor_ct
-):
+def get_neighborhood_score(ligand_target_pairs, graph, PEM, ISM, ST_nonzero, ligand_receptor_ct):
     neighborhood_scores = np.zeros(
         (ligand_target_pairs.shape[0], ligand_target_pairs.shape[1], graph.shape[0]),
         dtype=np.float32,
     )
-    min_PEM, max_PEM, min_ISM, max_ISM = min_max(
-        PEM, ISM, graph, ligand_target_pairs, ST_nonzero, ligand_receptor_ct
-    )
+    min_PEM, max_PEM, min_ISM, max_ISM = min_max(PEM, ISM, graph, ligand_target_pairs, ST_nonzero, ligand_receptor_ct)
     for ligand in prange(ligand_target_pairs.shape[0]):
         for target_index in prange(ligand_target_pairs.shape[1]):
             target = ligand_target_pairs[ligand][target_index]
@@ -713,49 +587,27 @@ def get_neighborhood_score(
                 for spot in range(graph.shape[0]):
                     cumsum = 0
                     if ST_nonzero[ligand][spot] and ST_nonzero[target][spot]:
-                        PEM_lt = (
-                            (PEM[ligand][spot] + PEM[target][spot])
-                            * ligand_receptor_ct[ligand]
-                        ).sum() / 2
-                        ISM_lt = (
-                            ISM[ligand][target_index][spot]
-                            + ISM[ligand][target_index][spot]
-                        ) / 2
-                        cumsum = ((PEM_lt - min_PEM) / (max_PEM - min_PEM)) * (
-                            (ISM_lt - min_ISM) / (max_ISM - min_ISM)
-                        )
+                        PEM_lt = ((PEM[ligand][spot] + PEM[target][spot]) * ligand_receptor_ct[ligand]).sum() / 2
+                        ISM_lt = (ISM[ligand][target_index][spot] + ISM[ligand][target_index][spot]) / 2
+                        cumsum = ((PEM_lt - min_PEM) / (max_PEM - min_PEM)) * ((ISM_lt - min_ISM) / (max_ISM - min_ISM))
                     for neighbor in graph[spot]:
                         if neighbor != -1 and neighbor != spot:
-                            if (
-                                ST_nonzero[ligand][spot]
-                                and ST_nonzero[target][neighbor]
-                            ):
+                            if ST_nonzero[ligand][spot] and ST_nonzero[target][neighbor]:
                                 PEM_lt1 = (
-                                    (PEM[ligand][spot] + PEM[target][neighbor])
-                                    * ligand_receptor_ct[ligand]
+                                    (PEM[ligand][spot] + PEM[target][neighbor]) * ligand_receptor_ct[ligand]
                                 ).sum() / 2
-                                ISM_lt1 = (
-                                    ISM[ligand][target_index][spot]
-                                    + ISM[ligand][target_index][neighbor]
-                                ) / 2
-                                cumsum += (
-                                    (PEM_lt1 - min_PEM) / (max_PEM - min_PEM)
-                                ) * ((ISM_lt1 - min_ISM) / (max_ISM - min_ISM))
-                            if (
-                                ST_nonzero[ligand][neighbor]
-                                and ST_nonzero[target][spot]
-                            ):
+                                ISM_lt1 = (ISM[ligand][target_index][spot] + ISM[ligand][target_index][neighbor]) / 2
+                                cumsum += ((PEM_lt1 - min_PEM) / (max_PEM - min_PEM)) * (
+                                    (ISM_lt1 - min_ISM) / (max_ISM - min_ISM)
+                                )
+                            if ST_nonzero[ligand][neighbor] and ST_nonzero[target][spot]:
                                 PEM_lt2 = (
-                                    (PEM[ligand][neighbor] + PEM[target][spot])
-                                    * ligand_receptor_ct[ligand]
+                                    (PEM[ligand][neighbor] + PEM[target][spot]) * ligand_receptor_ct[ligand]
                                 ).sum() / 2
-                                ISM_lt2 = (
-                                    ISM[ligand][target_index][neighbor]
-                                    + ISM[ligand][target_index][spot]
-                                ) / 2
-                                cumsum += (
-                                    (PEM_lt2 - min_PEM) / (max_PEM - min_PEM)
-                                ) * ((ISM_lt2 - min_ISM) / (max_ISM - min_ISM))
+                                ISM_lt2 = (ISM[ligand][target_index][neighbor] + ISM[ligand][target_index][spot]) / 2
+                                cumsum += ((PEM_lt2 - min_PEM) / (max_PEM - min_PEM)) * (
+                                    (ISM_lt2 - min_ISM) / (max_ISM - min_ISM)
+                                )
                     neighborhood_scores[ligand][target_index][spot] = cumsum
     return neighborhood_scores
 
@@ -833,10 +685,8 @@ def compute_neighborhood_scores(
 
     # Get list of unique ligands, targets and ligand-target pairs
     print("Fetching ligand/target pairs")
-    ligand_target_index, ligand_target_pairs, ST_nonzero, ligand_receptor_ct = (
-        get_ligand_target(
-            ligands, targets, ST, SC, genes, ligand_receptor_path, celltypes
-        )
+    ligand_target_index, ligand_target_pairs, ST_nonzero, ligand_receptor_ct = get_ligand_target(
+        ligands, targets, ST, SC, genes, ligand_receptor_path, celltypes
     )
     ligand_target_list = list(ligand_target_index.keys())
 
@@ -900,9 +750,7 @@ def compute_neighborhood_scores(
 
     print("Creating adata")
     if return_adata:
-        adata = toadata(
-            neighborhood_scores, ST, ligand_target_pairs, ligand_target_list
-        )
+        adata = toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list)
         return adata
     else:
         return neighborhood_scores
@@ -917,9 +765,7 @@ def toadata(neighborhood_scores, ST, ligand_target_pairs, ligand_target_list):
         for tar_index in range(ligand_target_pairs.shape[1]):
             if neighborhood_scores[lig_index][tar_index].sum() > 0:
                 target = ligand_target_pairs[lig_index][tar_index]
-                pairs.append(
-                    ligand_target_list[lig_index] + ":" + ligand_target_list[target]
-                )
+                pairs.append(ligand_target_list[lig_index] + ":" + ligand_target_list[target])
                 dataframe.append(list(neighborhood_scores[lig_index][tar_index]))
     dataframe = pd.DataFrame(dataframe).transpose()
     dataframe.columns = pairs

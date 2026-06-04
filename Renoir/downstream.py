@@ -83,14 +83,9 @@ def create_cluster(
         genes += ltpair.split(":")
     msig_subset = msig.loc[msig["gene_symbol"].isin(genes),]
     pathways = {}
-    pathways = {
-        k: g["gene_symbol"].tolist()
-        for k, g in msig_subset[["gs_name", "gene_symbol"]].groupby("gs_name")
-    }
+    pathways = {k: g["gene_symbol"].tolist() for k, g in msig_subset[["gs_name", "gene_symbol"]].groupby("gs_name")}
     if use_pathway:
-        pathways = {
-            k: v for k, v in pathways.items() if k in pathwayset["pathways"].tolist()
-        }
+        pathways = {k: v for k, v in pathways.items() if k in pathwayset["pathways"].tolist()}
     for key, val in pathways.items():
         temp = []
         for genea in val:
@@ -106,19 +101,12 @@ def create_cluster(
         clusterer = hdbscan.HDBSCAN(min_cluster_size=minpts)
         clusterer.fit(dist)
         for i in range(len(clusterer.labels_)):
-            if (
-                "cluster_" + str(clusterer.labels_[i]) not in pathways.keys()
-                and clusterer.labels_[i] != -1
-            ):
+            if "cluster_" + str(clusterer.labels_[i]) not in pathways.keys() and clusterer.labels_[i] != -1:
                 pathways["cluster_" + str(clusterer.labels_[i])] = []
-                pathways["cluster_" + str(clusterer.labels_[i])].append(
-                    neighbscore_copy.columns[i]
-                )
+                pathways["cluster_" + str(clusterer.labels_[i])].append(neighbscore_copy.columns[i])
             else:
                 if clusterer.labels_[i] != -1:
-                    pathways["cluster_" + str(clusterer.labels_[i])].append(
-                        neighbscore_copy.columns[i]
-                    )
+                    pathways["cluster_" + str(clusterer.labels_[i])].append(neighbscore_copy.columns[i])
     elif method == "dhc":
         dist = pdist(abs(neighbscore_copy.corr() - 1))
         dist = squareform(dist)
@@ -128,13 +116,9 @@ def create_cluster(
         for i in range(len(labels)):
             if "cluster_" + str(labels[i]) not in pathways.keys():
                 pathways["cluster_" + str(labels[i])] = []
-                pathways["cluster_" + str(labels[i])].append(
-                    neighbscore_copy.columns[i]
-                )
+                pathways["cluster_" + str(labels[i])].append(neighbscore_copy.columns[i])
             else:
-                pathways["cluster_" + str(labels[i])].append(
-                    neighbscore_copy.columns[i]
-                )
+                pathways["cluster_" + str(labels[i])].append(neighbscore_copy.columns[i])
     elif method is not None:
         raise "create_cluster :: Invalid arg: provide a valid method (dhc/hdbscan)"
 
@@ -143,22 +127,14 @@ def create_cluster(
         pathways = {
             k: v
             for k, v in pathways.items()
-            if (
-                (
-                    k.startswith("KEGG")
-                    or k.startswith("HALLMARK")
-                    or k.startswith("WP_")
-                )
-                and len(v) > pathway_thresh
-            )
+            if ((k.startswith("KEGG") or k.startswith("HALLMARK") or k.startswith("WP_")) and len(v) > pathway_thresh)
             or (k.startswith("cluster_") and len(v) > ltclust_thresh)
         }
     else:
         pathways = {
             k: v
             for k, v in pathways.items()
-            if (len(v) > pathway_thresh)
-            or (k.startswith("cluster_") and len(v) > ltclust_thresh)
+            if (len(v) > pathway_thresh) or (k.startswith("cluster_") and len(v) > ltclust_thresh)
         }
     return pathways
 
@@ -176,15 +152,10 @@ def get_top_n_clust_pairs(neighbscore, neighbscore_df, n=20):
     for cluster in sorted(neighbscore.obs["leiden"].unique()):
         top_spot = {}
         top_counts = {}
-        cluster_spots = neighbscore.obs.loc[
-            neighbscore.obs["leiden"] == str(cluster),
-        ].index
+        cluster_spots = neighbscore.obs.loc[neighbscore.obs["leiden"] == str(cluster),].index
         for spot in cluster_spots:
             top_spot[spot] = list(
-                neighbscore_df.loc[neighbscore_df.loc[:, spot] > 0, spot]
-                .sort_values(ascending=False)
-                .head(5)
-                .index
+                neighbscore_df.loc[neighbscore_df.loc[:, spot] > 0, spot].sort_values(ascending=False).head(5).index
             )
         for spot in top_spot.keys():
             for index in range(len(top_spot[spot])):
@@ -263,11 +234,7 @@ def downstream_analysis(
         pdf = matplotlib.backends.backend_pdf.PdfPages(pdf_path)
         if len([x for x in pcs.var_names if not x.startswith("cluster")]) > 2:
             sc.pl.clustermap(
-                sc.AnnData(
-                    pcs.to_df()[
-                        [x for x in pcs.var_names if not x.startswith("cluster")]
-                    ].T
-                ),
+                sc.AnnData(pcs.to_df()[[x for x in pcs.var_names if not x.startswith("cluster")]].T),
                 show=False,
             )
             temp_fig = plt.gcf()
@@ -276,9 +243,7 @@ def downstream_analysis(
             plt.close()
         if len([x for x in pcs.var_names if x.startswith("cluster")]) > 2:
             sc.pl.clustermap(
-                sc.AnnData(
-                    pcs.to_df()[[x for x in pcs.var_names if x.startswith("cluster")]].T
-                ),
+                sc.AnnData(pcs.to_df()[[x for x in pcs.var_names if x.startswith("cluster")]].T),
                 show=False,
             )
             temp_fig = plt.gcf()
@@ -293,9 +258,7 @@ def downstream_analysis(
     sc.tl.pca(pcs)
     sc.tl.pca(neighbscore_copy)
     sc.pp.neighbors(pcs, n_neighbors=20, n_pcs=pcs.varm["PCs"].shape[1])
-    sc.pp.neighbors(
-        neighbscore_copy, n_neighbors=20, n_pcs=neighbscore_copy.varm["PCs"].shape[1]
-    )
+    sc.pp.neighbors(neighbscore_copy, n_neighbors=20, n_pcs=neighbscore_copy.varm["PCs"].shape[1])
     # sc.tl.leiden(pcs, resolution = 0.3)
     sc.tl.leiden(neighbscore_copy, resolution=resolution)
     sc.tl.umap(pcs)
@@ -306,9 +269,7 @@ def downstream_analysis(
     if pdf_path is not None:
         # raise "ERROR: pdf_path arg is None. Path to save pdf missing."
         # Plot UMAP / Spatial plot
-        temp_fig = sc.pl.umap(
-            pcs, components="all", color="leiden", return_fig=True, show=False
-        )
+        temp_fig = sc.pl.umap(pcs, components="all", color="leiden", return_fig=True, show=False)
         temp_fig.set_size_inches(25, 25)
         pdf.savefig(temp_fig)
         plt.close()
@@ -322,9 +283,7 @@ def downstream_analysis(
         temp_fig.set_size_inches(25, 25)
         pdf.savefig(temp_fig)
         plt.close()
-        sc.pl.spatial(
-            neighbscore_copy, img_key="hires", color=["leiden"], size=1.4, show=False
-        )
+        sc.pl.spatial(neighbscore_copy, img_key="hires", color=["leiden"], size=1.4, show=False)
         temp_fig = plt.gcf()
         temp_fig.set_size_inches(25, 25)
         pdf.savefig(temp_fig)
@@ -422,9 +381,7 @@ def spot_v_spot(
     # sc.tl.pca(pcs)
     sc.tl.pca(neighbscore_copy)
     # sc.pp.neighbors(pcs, n_neighbors=20, n_pcs=40)
-    sc.pp.neighbors(
-        neighbscore_copy, n_neighbors=20, n_pcs=neighbscore_copy.varm["PCs"].shape[1]
-    )
+    sc.pp.neighbors(neighbscore_copy, n_neighbors=20, n_pcs=neighbscore_copy.varm["PCs"].shape[1])
     # sc.tl.leiden(pcs, resolution = 0.3)
     sc.tl.leiden(neighbscore_copy, resolution=resolution)
     # sc.tl.umap(pcs)
@@ -434,9 +391,7 @@ def spot_v_spot(
     pcs.obs["leiden"] = neighbscore_copy.obs["leiden"]
     # Plot UMAP / Spatial plot
     pdf = matplotlib.backends.backend_pdf.PdfPages(pdf_path)
-    temp_fig = sc.pl.umap(
-        neighbscore_copy, components="all", color="leiden", return_fig=True, show=False
-    )
+    temp_fig = sc.pl.umap(neighbscore_copy, components="all", color="leiden", return_fig=True, show=False)
     temp_fig.set_size_inches(16, 16)
     pdf.savefig(temp_fig)
     plt.close()
@@ -472,11 +427,7 @@ def spot_v_spot(
     plt.close()
     # Plot top N pairs per cluster
     top_n = get_top_n_clust_pairs(neighbscore_copy, neighbscore_df, n=n_top)
-    de_ltpairs = [
-        pair
-        for tup in neighbscore_copy.uns["rank_genes_groups"]["names"][0:n_markers]
-        for pair in tup
-    ]
+    de_ltpairs = [pair for tup in neighbscore_copy.uns["rank_genes_groups"]["names"][0:n_markers] for pair in tup]
     sc.pl.heatmap(
         neighbscore_copy,
         var_names=top_n,
@@ -530,9 +481,7 @@ def spot_v_spot(
     cosine.uns = neighbscore_copy.uns
     sc.pl.heatmap(
         celltype_cosine,
-        celltype_cosine.obs.groupby("leiden", observed=False)
-        .apply(lambda g: list(g.index))
-        .to_dict(),
+        celltype_cosine.obs.groupby("leiden", observed=False).apply(lambda g: list(g.index)).to_dict(),
         groupby="leiden",
         show=False,
         cmap="YlOrBr",
@@ -543,9 +492,7 @@ def spot_v_spot(
     plt.close()
     sc.pl.heatmap(
         neighbscore_cosine,
-        neighbscore_cosine.obs.groupby("leiden", observed=False)
-        .apply(lambda g: list(g.index))
-        .to_dict(),
+        neighbscore_cosine.obs.groupby("leiden", observed=False).apply(lambda g: list(g.index)).to_dict(),
         groupby="leiden",
         show=False,
         cmap="YlOrBr",
@@ -556,9 +503,7 @@ def spot_v_spot(
     plt.close()
     sc.pl.heatmap(
         cosine,
-        cosine.obs.groupby("leiden", observed=False)
-        .apply(lambda g: list(g.index))
-        .to_dict(),
+        cosine.obs.groupby("leiden", observed=False).apply(lambda g: list(g.index)).to_dict(),
         groupby="leiden",
         show=False,
         cmap="YlOrBr",
@@ -578,24 +523,20 @@ def spot_v_spot(
     # hierarchically cluster each group
     clusterobj = sc.pl.clustermap(celltype_copy, show=False)
     plt.close()
-    reordered_var = list(
-        celltype_copy.var_names[clusterobj.dendrogram_col.reordered_ind]
-    )
+    reordered_var = list(celltype_copy.var_names[clusterobj.dendrogram_col.reordered_ind])
     celltype_copy = celltype_copy[:, reordered_var]
     clustered_spot_order = []
     for cluster in celltype_copy.obs.leiden.unique():
         clusterobj = sc.pl.clustermap(
-            celltype_copy[
-                celltype_copy.obs.leiden[celltype_copy.obs.leiden == cluster].index, :
-            ],
+            celltype_copy[celltype_copy.obs.leiden[celltype_copy.obs.leiden == cluster].index, :],
             show=False,
             col_cluster=False,
         )
         plt.close()
         clustered_spot_order += list(
-            celltype_copy[
-                celltype_copy.obs.leiden[celltype_copy.obs.leiden == cluster].index, :
-            ].obs_names[clusterobj.dendrogram_row.reordered_ind]
+            celltype_copy[celltype_copy.obs.leiden[celltype_copy.obs.leiden == cluster].index, :].obs_names[
+                clusterobj.dendrogram_row.reordered_ind
+            ]
         )
     celltype_copy = celltype_copy[clustered_spot_order, :]
     sc.pl.heatmap(
@@ -620,9 +561,7 @@ def spot_v_spot(
             col_cluster=False,
         )
         clustered_spot_order += list(
-            pcs[pcs.obs.leiden[pcs.obs.leiden == cluster].index, :].obs_names[
-                clusterobj.dendrogram_row.reordered_ind
-            ]
+            pcs[pcs.obs.leiden[pcs.obs.leiden == cluster].index, :].obs_names[clusterobj.dendrogram_row.reordered_ind]
         )
     pcs = pcs[clustered_spot_order, :]
     if len([x for x in pcs.var_names if not x.startswith("cluster")]) > 2:
@@ -651,9 +590,7 @@ def spot_v_spot(
         pdf.savefig(temp_fig)
         plt.close()
     if len([x for x in pcs.var_names if x.startswith("cluster")]) > 2:
-        clusterobj = sc.pl.clustermap(
-            pcs[:, [x for x in pcs.var_names if x.startswith("cluster")]], show=False
-        )
+        clusterobj = sc.pl.clustermap(pcs[:, [x for x in pcs.var_names if x.startswith("cluster")]], show=False)
         plt.close()
         reordered_var = list(
             pcs[:, [x for x in pcs.var_names if x.startswith("cluster")]].var_names[
@@ -718,15 +655,11 @@ def sankeyPlot(
     # Get average celltype score and average neighbscore
     celltype_avg = pd.DataFrame(columns=celltype_copy.var_names, index=clusters)
     for clust in clusters:
-        celltype_avg.loc[clust] = celltype_copy[
-            celltype_copy.obs["leiden"].isin([clust]), :
-        ].X.mean(0)
+        celltype_avg.loc[clust] = celltype_copy[celltype_copy.obs["leiden"].isin([clust]), :].X.mean(0)
     celltype_avg = celltype_avg.T.to_dict("dict")
     ltpair_avg = pd.DataFrame(columns=neighbscore.var_names, index=clusters)
     for clust in clusters:
-        ltpair_avg.loc[clust] = neighbscore.raw[
-            neighbscore.obs["leiden"].isin([clust]), :
-        ].X.mean(0)
+        ltpair_avg.loc[clust] = neighbscore.raw[neighbscore.obs["leiden"].isin([clust]), :].X.mean(0)
     ltpair_avg = ltpair_avg[ltpairs].T.to_dict("dict")
     # Create a dictionary of links and nodes
     ligands = []
@@ -772,9 +705,7 @@ def sankeyPlot(
 
     value_temp = []
     for lig_clust in clust_v_ligand.keys():
-        value_temp.append(
-            clust_v_ligand[lig_clust]
-        )  # / clust_v_ligand_sum[lig_clust.split(':')[1]]
+        value_temp.append(clust_v_ligand[lig_clust])  # / clust_v_ligand_sum[lig_clust.split(':')[1]]
         links.append(
             {
                 "source": lig_clust.split(":")[0],
@@ -788,9 +719,7 @@ def sankeyPlot(
 
     value_temp = []
     for tar_clust in target_v_clust.keys():
-        value_temp.append(
-            target_v_clust[tar_clust]
-        )  #  / target_v_clust_sum[tar_clust.split(':')[1]]
+        value_temp.append(target_v_clust[tar_clust])  #  / target_v_clust_sum[tar_clust.split(':')[1]]
 
     for tar_clust in target_v_clust.keys():
         links.append(
@@ -816,17 +745,13 @@ def sankeyPlot(
     top_celltypes = []
     value_temp = []
     for clust in celltype_avg.keys():
-        celltypes_temp = sorted(
-            celltype_avg[clust], key=celltype_avg[clust].get, reverse=True
-        )[:n_celltype]
+        celltypes_temp = sorted(celltype_avg[clust], key=celltype_avg[clust].get, reverse=True)[:n_celltype]
         for ct in celltypes_temp:
             value_temp.append(celltype_avg[clust][ct])
 
     ct_avg = sum(value_temp) / len(value_temp)
     for clust in celltype_avg.keys():
-        celltypes_temp = sorted(
-            celltype_avg[clust], key=celltype_avg[clust].get, reverse=True
-        )[:n_celltype]
+        celltypes_temp = sorted(celltype_avg[clust], key=celltype_avg[clust].get, reverse=True)[:n_celltype]
         top_celltypes += celltypes_temp
         for ct in celltypes_temp:
             links.append(
@@ -845,9 +770,7 @@ def sankeyPlot(
     # get node ids and link colors
     colors = {}
     for node in nodes:
-        colors[node] = "#" + "".join(
-            [random.choice("0123456789ABCDE") for j in range(6)]
-        )
+        colors[node] = "#" + "".join([random.choice("0123456789ABCDE") for j in range(6)])
     links["color"] = links["source"]
     links["color"] = links["color"].map(colors)
     node_id = {}
@@ -941,9 +864,7 @@ def pcs_v_neighbscore(
         if clustermap:
             clusterobj = sc.pl.clustermap(sc.AnnData(pc_v_neighb_df), show=False)
             plt.close()
-            reordered_rows = list(
-                pc_v_neighb_df.index[clusterobj.dendrogram_row.reordered_ind]
-            )
+            reordered_rows = list(pc_v_neighb_df.index[clusterobj.dendrogram_row.reordered_ind])
             reordered_rows.remove(cluster)
             reordered_rows = [cluster] + reordered_rows
             sc.pl.clustermap(
@@ -956,9 +877,7 @@ def pcs_v_neighbscore(
             pdf.savefig(temp_fig)
             plt.close()
         if spatialfeatureplot:
-            sc.pl.spatial(
-                pc_v_neighb, color=cluster, show=False, size=size, alpha_img=0
-            )
+            sc.pl.spatial(pc_v_neighb, color=cluster, show=False, size=size, alpha_img=0)
             temp_fig = plt.gcf()
             temp_fig.set_size_inches(16, 16)
             pdf.savefig(temp_fig)
@@ -1012,32 +931,24 @@ def ligand_ranking(
     celltype_copy = sc.AnnData(celltype_df.T)
     celltype_copy.obs["leiden"] = neighbscore.obs["leiden"]
     celltype_copy.uns = neighbscore.uns
-    celltype_copy = celltype_copy[
-        celltype_copy.obs.loc[celltype_copy.obs.leiden == domain].index
-    ].copy()
+    celltype_copy = celltype_copy[celltype_copy.obs.loc[celltype_copy.obs.leiden == domain].index].copy()
     celltype_df_copy = celltype_copy.to_df()
     # Get average celltype score and average neighbscore
     celltype_avg = pd.DataFrame(
         columns=celltype_copy.var_names,
         index=celltype_copy.obs["leiden"].cat.categories,
     )
-    celltype_avg.loc[domain] = celltype_copy[
-        celltype_copy.obs["leiden"].isin([domain]), :
-    ].X.mean(0)
+    celltype_avg.loc[domain] = celltype_copy[celltype_copy.obs["leiden"].isin([domain]), :].X.mean(0)
     celltype_avg = celltype_avg.T.to_dict("dict")
     if domain_celltypes[0] == "top":
-        top_celltypes = sorted(
-            celltype_avg[domain], key=celltype_avg[domain].get, reverse=True
-        )[: domain_celltypes[1]]
+        top_celltypes = sorted(celltype_avg[domain], key=celltype_avg[domain].get, reverse=True)[: domain_celltypes[1]]
         top_celltypes = list(set(top_celltypes))
     else:
         top_celltypes = domain_celltypes
     # Get celltype markers
     if "top" in markers.keys():
         sc.pp.filter_genes(scrna, min_cells=1)
-        scrna = scrna[
-            scrna.obs.loc[scrna.obs.celltype.isin(top_celltypes)].index
-        ].copy()
+        scrna = scrna[scrna.obs.loc[scrna.obs.celltype.isin(top_celltypes)].index].copy()
         scrna.obs.celltype = scrna.obs.celltype.astype("category")
         scrna.raw = scrna
         sc.tl.rank_genes_groups(scrna, "celltype", method="wilcoxon")
@@ -1051,9 +962,9 @@ def ligand_ranking(
                     scrna.uns["rank_genes_groups"]["logfoldchanges"][index][col] > 0
                     and scrna.uns["rank_genes_groups"]["pvals_adj"][index][col] < 0.05
                 ):
-                    markers[
-                        scrna.uns["rank_genes_groups"]["names"][0].dtype.names[col]
-                    ].append(scrna.uns["rank_genes_groups"]["names"][index][col])
+                    markers[scrna.uns["rank_genes_groups"]["names"][0].dtype.names[col]].append(
+                        scrna.uns["rank_genes_groups"]["names"][index][col]
+                    )
         markers = pd.DataFrame(list(markers.values()), index=markers.keys()).T
         markers = markers.iloc[0:200, :]
     else:
@@ -1065,9 +976,7 @@ def ligand_ranking(
         if receptor in scrna.var_names:
             receptors[receptor] = []
             for ct in markers.columns:
-                temp = scrna[
-                    scrna.obs.loc[scrna.obs.celltype == ct].index, receptor
-                ].to_df()
+                temp = scrna[scrna.obs.loc[scrna.obs.celltype == ct].index, receptor].to_df()
                 if np.count_nonzero(temp) / len(temp) >= receptor_exp:
                     receptors[receptor].append(ct)
 
@@ -1093,15 +1002,10 @@ def ligand_ranking(
     # For each domain find score for each ligand and target and its corresponding celltype
     lrt_dict = {}
     for i, row in ligand_receptor_pairs.iterrows():
-        if (
-            row["ligand"] in ct_spec_mark["ligand"].keys()
-            and row["receptor"] in receptors.keys()
-        ):
+        if row["ligand"] in ct_spec_mark["ligand"].keys() and row["receptor"] in receptors.keys():
             if row["ligand"] not in lrt_dict.keys():
                 lrt_dict[row["ligand"]] = {}
-                lrt_dict[row["ligand"]]["celltype"] = ct_spec_mark["ligand"][
-                    row["ligand"]
-                ]
+                lrt_dict[row["ligand"]]["celltype"] = ct_spec_mark["ligand"][row["ligand"]]
             for ct in receptors[row["receptor"]]:
                 for target in ct_spec_mark["target"][ct]:
                     if row["ligand"] + ":" + target in neighbscore.var_names:
@@ -1122,9 +1026,7 @@ def ligand_ranking(
             spots = temp[
                 (temp.select_dtypes(include=["number"]) != 0).any(axis=1)
             ].index  # spots = temp[(temp.select_dtypes(include=['number']) != 0).all(1)].index
-            ligand_score[ligand][target] = neighbscore_df.loc[
-                spots, ligand + ":" + target
-            ].mean()
+            ligand_score[ligand][target] = neighbscore_df.loc[spots, ligand + ":" + target].mean()
 
     targets = []
     for ligand in ligand_score.keys():
@@ -1144,24 +1046,16 @@ def ligand_ranking(
                 else:
                     ligand_score_temp.append(0)
                 if target in ligand_target_regulatory_potential[ligand].keys():
-                    ligand_regulatory_potential.append(
-                        ligand_target_regulatory_potential[ligand][target]
-                    )
+                    ligand_regulatory_potential.append(ligand_target_regulatory_potential[ligand][target])
                 else:
                     ligand_regulatory_potential.append(0)
-            ligand_ranking[ligand] = pd.Series(ligand_score_temp).corr(
-                pd.Series(ligand_regulatory_potential)
-            )
+            ligand_ranking[ligand] = pd.Series(ligand_score_temp).corr(pd.Series(ligand_regulatory_potential))
 
     # Plot avg neighborhood scores at colocalized spots ranked by ligand ranking score
     ligand_score_df = pd.DataFrame(ligand_score).fillna(0).T
-    ligand_score_df = (ligand_score_df - ligand_score_df.min()) / (
-        ligand_score_df.max() - ligand_score_df.min()
-    )
+    ligand_score_df = (ligand_score_df - ligand_score_df.min()) / (ligand_score_df.max() - ligand_score_df.min())
     ligand_score_df = ligand_score_df.fillna(0)
-    ligand_score_df = ligand_score_df.loc[
-        sorted(ligand_ranking, key=lambda k: ligand_ranking[k], reverse=True), :
-    ]
+    ligand_score_df = ligand_score_df.loc[sorted(ligand_ranking, key=lambda k: ligand_ranking[k], reverse=True), :]
     # ligand_score_df = ligand_score_df.loc[~(ligand_score_df==0).all(axis=1)]
     ligand_score_df = ligand_score_df.loc[:, (ligand_score_df != 0).any(axis=0)]
     # Sort columns
@@ -1183,9 +1077,7 @@ def ligand_ranking(
         colors = {k: celltype_colors[k] for k in top_celltypes}
 
     # Create dummy joint plot
-    sns.set(
-        rc={"axes.facecolor": "#ffffff", "figure.facecolor": "#ffffff"}, font_scale=1.7
-    )
+    sns.set(rc={"axes.facecolor": "#ffffff", "figure.facecolor": "#ffffff"}, font_scale=1.7)
     g = sns.jointplot(
         data=ligand_score_df,
         x=ligand_score_df.iloc[:, 1],
@@ -1215,9 +1107,7 @@ def ligand_ranking(
     pos_joint_ax = g.ax_joint.get_position()
     pos_marg_x_ax = g.ax_marg_x.get_position()
     # reposition the joint ax so it has the same width as the marginal x ax
-    g.ax_joint.set_position(
-        [pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height]
-    )
+    g.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height])
     # reposition the colorbar using new x positions and y positions of the joint ax
     g.fig.axes[-1].set_position([0.83, pos_joint_ax.y0, 0.07, pos_joint_ax.height])
     mask = ligand_score_df.apply(
@@ -1238,9 +1128,7 @@ def ligand_ranking(
     pos_joint_ax = g.ax_joint.get_position()
     pos_marg_x_ax = g.ax_marg_x.get_position()
     # reposition the joint ax so it has the same width as the marginal x ax
-    g.ax_joint.set_position(
-        [pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height]
-    )
+    g.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_marg_x_ax.width, pos_joint_ax.height])
     # reposition the colorbar using new x positions and y positions of the joint ax
     g.fig.axes[-1].set_position([0.83, pos_joint_ax.y0, 0.07, pos_joint_ax.height])
 
@@ -1262,9 +1150,7 @@ def ligand_ranking(
         )
 
     # celltype bar plot for targets
-    ct_bar_plot = pd.DataFrame(
-        0, columns=top_celltypes, index=list(ligand_score_df.columns)[1:]
-    )
+    ct_bar_plot = pd.DataFrame(0, columns=top_celltypes, index=list(ligand_score_df.columns)[1:])
     for col in ct_bar_plot.columns:
         for row in ct_bar_plot.index:
             if row in ct_spec_mark["target"][col]:

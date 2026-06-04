@@ -37,27 +37,51 @@ import pytest
 # Configuration
 # ---------------------------------------------------------------------------
 
-N_SPOTS          = 30
-N_GENES          = 40
-N_CELLTYPES      = 4
-N_CELLS_PER_CT   = 10   # cells per celltype in sc_adata (40 cells total)
-N_LT_PAIRS       = 12
+N_SPOTS = 30
+N_GENES = 40
+N_CELLTYPES = 4
+N_CELLS_PER_CT = 10  # cells per celltype in sc_adata (40 cells total)
+N_LT_PAIRS = 12
 
-CELLTYPES        = ["TypeA", "TypeB", "TypeC", "TypeD"]
-GENE_NAMES       = [f"GENE{i}" for i in range(N_GENES)]
+CELLTYPES = ["TypeA", "TypeB", "TypeC", "TypeD"]
+GENE_NAMES = [f"GENE{i}" for i in range(N_GENES)]
 
 # Ligands: GENE0-GENE4 | Targets: GENE5-GENE9
 # All are drawn from GENE_NAMES so get_ligand_target can find them
-LIGANDS_LIST = ["GENE0","GENE1","GENE2","GENE3","GENE4",
-                "GENE0","GENE1","GENE2","GENE3","GENE4","GENE0","GENE1"]
-TARGETS_LIST = ["GENE5","GENE6","GENE7","GENE8","GENE9",
-                "GENE6","GENE7","GENE8","GENE9","GENE5","GENE8","GENE9"]
-PAIR_NAMES       = [f"{lgt}:{tgt}" for lgt, tgt in zip(LIGANDS_LIST, TARGETS_LIST)]
-LIGANDS_UNIQUE   = list(dict.fromkeys(LIGANDS_LIST))  # GENE0..GENE4
-TARGET_GENES     = list(dict.fromkeys(TARGETS_LIST))   # GENE5..GENE9
+LIGANDS_LIST = [
+    "GENE0",
+    "GENE1",
+    "GENE2",
+    "GENE3",
+    "GENE4",
+    "GENE0",
+    "GENE1",
+    "GENE2",
+    "GENE3",
+    "GENE4",
+    "GENE0",
+    "GENE1",
+]
+TARGETS_LIST = [
+    "GENE5",
+    "GENE6",
+    "GENE7",
+    "GENE8",
+    "GENE9",
+    "GENE6",
+    "GENE7",
+    "GENE8",
+    "GENE9",
+    "GENE5",
+    "GENE8",
+    "GENE9",
+]
+PAIR_NAMES = [f"{lgt}:{tgt}" for lgt, tgt in zip(LIGANDS_LIST, TARGETS_LIST)]
+LIGANDS_UNIQUE = list(dict.fromkeys(LIGANDS_LIST))  # GENE0..GENE4
+TARGET_GENES = list(dict.fromkeys(TARGETS_LIST))  # GENE5..GENE9
 
 # ALL genes that appear in any pair name (both sides)
-ALL_PAIR_GENES   = sorted(set(LIGANDS_LIST + TARGETS_LIST))
+ALL_PAIR_GENES = sorted(set(LIGANDS_LIST + TARGETS_LIST))
 
 # Marker genes per celltype — designed so the full ligand→receptor→target chain
 # in ligand_ranking always works regardless of which two celltypes are selected:
@@ -71,10 +95,10 @@ ALL_PAIR_GENES   = sorted(set(LIGANDS_LIST + TARGETS_LIST))
 #   - targets (GENE5-9) as TypeA markers → ct_spec_mark['target'] populated
 #   → ligand_score_df gets target columns → iloc[:,1] succeeds
 CT_MARKER_GENES = {
-    "TypeA": [f"GENE{j}" for j in range(10)],    # GENE0-9: ligands + targets
-    "TypeB": [f"GENE{j}" for j in range(20, 30)], # GENE20-29: receptors
-    "TypeC": [f"GENE{j}" for j in range(10, 20)], # GENE10-19
-    "TypeD": [f"GENE{j}" for j in range(30, 40)], # GENE30-39
+    "TypeA": [f"GENE{j}" for j in range(10)],  # GENE0-9: ligands + targets
+    "TypeB": [f"GENE{j}" for j in range(20, 30)],  # GENE20-29: receptors
+    "TypeC": [f"GENE{j}" for j in range(10, 20)],  # GENE10-19
+    "TypeD": [f"GENE{j}" for j in range(30, 40)],  # GENE30-39
 }
 
 
@@ -82,8 +106,10 @@ CT_MARKER_GENES = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _rng(seed=42):
     return np.random.default_rng(seed)
+
 
 def _sparse(arr):
     return sp.csr_matrix(arr.astype(np.float32))
@@ -92,6 +118,7 @@ def _sparse(arr):
 # ---------------------------------------------------------------------------
 # Spatial transcriptomics AnnData (Visium-like)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def st_adata():
@@ -103,17 +130,19 @@ def st_adata():
         obs=pd.DataFrame(index=spot_names),
         var=pd.DataFrame(index=GENE_NAMES),
     )
-    adata.obsm["spatial"]     = rng.uniform(0, 500, size=(N_SPOTS, 2))
-    adata.obs["celltype"]     = pd.Categorical(np.resize(CELLTYPES, N_SPOTS))
-    adata.obs["library_id"]   = "library"
+    adata.obsm["spatial"] = rng.uniform(0, 500, size=(N_SPOTS, 2))
+    adata.obs["celltype"] = pd.Categorical(np.resize(CELLTYPES, N_SPOTS))
+    adata.obs["library_id"] = "library"
     # array_row / array_col are required by compute_neighborhood_scores (line 612
     # of renoir.py) which calls neighborhood(ST.obs['array_row'], ST.obs['array_col'])
-    adata.obs["array_row"]    = np.tile(np.arange(5), N_SPOTS // 5 + 1)[:N_SPOTS]
-    adata.obs["array_col"]    = np.tile(np.arange(6), N_SPOTS // 6 + 1)[:N_SPOTS]
-    adata.uns["spatial"]      = {"library": {
-        "images":       {"hires": rng.uniform(0, 1, (100, 100, 3)).astype(np.float32)},
-        "scalefactors": {"tissue_hires_scalef": 1.0, "spot_diameter_fullres": 10},
-    }}
+    adata.obs["array_row"] = np.tile(np.arange(5), N_SPOTS // 5 + 1)[:N_SPOTS]
+    adata.obs["array_col"] = np.tile(np.arange(6), N_SPOTS // 6 + 1)[:N_SPOTS]
+    adata.uns["spatial"] = {
+        "library": {
+            "images": {"hires": rng.uniform(0, 1, (100, 100, 3)).astype(np.float32)},
+            "scalefactors": {"tissue_hires_scalef": 1.0, "spot_diameter_fullres": 10},
+        }
+    }
     return adata
 
 
@@ -122,10 +151,11 @@ def st_adata():
 # so rank_genes_groups returns significant hits for ligand_ranking
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sc_adata():
-    n_cells = N_CELLS_PER_CT * N_CELLTYPES   # 40 cells
-    rng     = _rng(1)
+    n_cells = N_CELLS_PER_CT * N_CELLTYPES  # 40 cells
+    rng = _rng(1)
 
     # Build expression: high for celltype-specific markers, low elsewhere
     X = np.zeros((n_cells, N_GENES), dtype=np.float32)
@@ -136,11 +166,11 @@ def sc_adata():
         for row in rows:
             X[row, marker_cols] = rng.uniform(8.0, 12.0, len(marker_cols))
             other_cols = [c for c in range(N_GENES) if c not in marker_cols]
-            X[row, other_cols]  = rng.uniform(0.0, 0.3, len(other_cols))
+            X[row, other_cols] = rng.uniform(0.0, 0.3, len(other_cols))
         celltype_labels += [ct] * N_CELLS_PER_CT
 
     cell_names = [f"cell_{i}" for i in range(n_cells)]
-    obs        = pd.DataFrame(index=cell_names)
+    obs = pd.DataFrame(index=cell_names)
     obs["celltype"] = pd.Categorical(celltype_labels)
 
     return ad.AnnData(
@@ -154,9 +184,10 @@ def sc_adata():
 # Cell-type proportions
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def celltype_proportions():
-    rng        = _rng(2)
+    rng = _rng(2)
     spot_names = [f"spot_{i}" for i in range(N_SPOTS)]
     # Use a skewed Dirichlet so TypeA and TypeB are reliably the top two
     # celltypes. This guarantees ligand_ranking's top_2 celltypes always
@@ -172,17 +203,18 @@ def celltype_proportions():
 # obs index MUST match neighborhood_scores obs index
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def celltype_adata(st_adata, celltype_proportions):
     spot_names = [f"spot_{i}" for i in range(N_SPOTS)]
-    X          = _sparse(celltype_proportions.values)
-    adata      = ad.AnnData(
+    X = _sparse(celltype_proportions.values)
+    adata = ad.AnnData(
         X=X,
         obs=pd.DataFrame(index=spot_names),
         var=pd.DataFrame(index=CELLTYPES),
     )
-    adata.obsm["spatial"]   = st_adata.obsm["spatial"]
-    adata.uns["spatial"]    = st_adata.uns["spatial"]
+    adata.obsm["spatial"] = st_adata.obsm["spatial"]
+    adata.uns["spatial"] = st_adata.uns["spatial"]
     adata.obs["library_id"] = "library"
     return adata
 
@@ -193,36 +225,37 @@ def celltype_adata(st_adata, celltype_proportions):
 # .raw is set (ligand_ranking calls neighbscore.raw.to_adata())
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def neighborhood_scores(st_adata):
-    rng        = _rng(4)
+    rng = _rng(4)
     spot_names = [f"spot_{i}" for i in range(N_SPOTS)]
 
     # Give the score matrix clear block structure so Leiden always finds
     # at least 2 clusters (random uniform scores collapse to 1 cluster).
     # Spots 0-14 have high scores for pairs 0-5; spots 15-29 for pairs 6-11.
     X = np.zeros((N_SPOTS, N_LT_PAIRS), dtype=np.float32)
-    X[:15, :6]  = rng.uniform(3.0, 5.0, (15, 6))
-    X[:15, 6:]  = rng.uniform(0.0, 0.3, (15, 6))
-    X[15:, :6]  = rng.uniform(0.0, 0.3, (15, 6))
-    X[15:, 6:]  = rng.uniform(3.0, 5.0, (15, 6))
+    X[:15, :6] = rng.uniform(3.0, 5.0, (15, 6))
+    X[:15, 6:] = rng.uniform(0.0, 0.3, (15, 6))
+    X[15:, :6] = rng.uniform(0.0, 0.3, (15, 6))
+    X[15:, 6:] = rng.uniform(3.0, 5.0, (15, 6))
     X = _sparse(X)
 
-    obs              = st_adata.obs.copy()
-    obs.index        = spot_names
-    obs["leiden"]    = pd.Categorical(
-        ["0"] * 15 + ["1"] * 15   # pre-set 2 domains matching the block structure
+    obs = st_adata.obs.copy()
+    obs.index = spot_names
+    obs["leiden"] = pd.Categorical(
+        ["0"] * 15 + ["1"] * 15  # pre-set 2 domains matching the block structure
     )
 
-    adata            = ad.AnnData(
+    adata = ad.AnnData(
         X=X,
         obs=obs,
         var=pd.DataFrame(index=PAIR_NAMES),
     )
-    adata.obsm["spatial"]   = st_adata.obsm["spatial"]
-    adata.uns["spatial"]    = st_adata.uns["spatial"]
+    adata.obsm["spatial"] = st_adata.obsm["spatial"]
+    adata.uns["spatial"] = st_adata.uns["spatial"]
     adata.obs["library_id"] = "library"
-    adata.raw               = adata.copy()
+    adata.raw = adata.copy()
     return adata
 
 
@@ -233,10 +266,11 @@ def neighborhood_scores(st_adata):
 # appear in the pathway's gene_symbol list.
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def msig_df():
     rows = []
-    for gene in ALL_PAIR_GENES:     # includes GENE0..GENE4 (ligands) AND GENE5..GENE9 (targets)
+    for gene in ALL_PAIR_GENES:  # includes GENE0..GENE4 (ligands) AND GENE5..GENE9 (targets)
         for gs in ["HALLMARK_TEST_PATHWAY", "KEGG_TEST_PATHWAY", "WP_TEST_PATHWAY"]:
             rows.append({"gs_name": gs, "gene_symbol": gene})
     return pd.DataFrame(rows)
@@ -245,6 +279,7 @@ def msig_df():
 # ---------------------------------------------------------------------------
 # MSigDB CSV on disk
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def msig_csv(tmp_path, msig_df):
@@ -257,6 +292,7 @@ def msig_csv(tmp_path, msig_df):
 # Ligand-target regulatory potential (ligand_ranking)
 # Indexed by LIGANDS_UNIQUE, columns = all GENE_NAMES
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def lt_regulatory_potential():
@@ -272,12 +308,15 @@ def lt_regulatory_potential():
 # Ligand-receptor CSV — receptors must be in sc_adata.var_names (GENE_NAMES)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def lr_pairs_csv(tmp_path):
-    df   = pd.DataFrame({
-        "ligand":   LIGANDS_UNIQUE,
-        "receptor": [f"GENE{i + 20}" for i in range(len(LIGANDS_UNIQUE))],
-    })
+    df = pd.DataFrame(
+        {
+            "ligand": LIGANDS_UNIQUE,
+            "receptor": [f"GENE{i + 20}" for i in range(len(LIGANDS_UNIQUE))],
+        }
+    )
     path = str(tmp_path / "lr_pairs.csv")
     df.to_csv(path, index=False)
     return path
@@ -287,9 +326,10 @@ def lr_pairs_csv(tmp_path):
 # Ligand-target pairs CSV (for compute_neighborhood_scores integration tests)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def lt_pairs_csv(tmp_path):
-    df   = pd.DataFrame({"ligand": LIGANDS_LIST, "target": TARGETS_LIST})
+    df = pd.DataFrame({"ligand": LIGANDS_LIST, "target": TARGETS_LIST})
     path = str(tmp_path / "lt_pairs.csv")
     df.to_csv(path, index=False)
     return path
@@ -298,6 +338,7 @@ def lt_pairs_csv(tmp_path):
 # ---------------------------------------------------------------------------
 # Cell-type proportions CSV (for integration tests)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def celltype_proportions_csv(tmp_path, celltype_proportions):
@@ -309,6 +350,7 @@ def celltype_proportions_csv(tmp_path, celltype_proportions):
 # ---------------------------------------------------------------------------
 # h5ad files on disk (for integration tests)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def st_h5ad(tmp_path, st_adata):

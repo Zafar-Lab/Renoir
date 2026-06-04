@@ -1,6 +1,6 @@
 from setuptools import setup
 
-VERSION = "1.0.0-beta"
+VERSION = "1.0.0"
 DESCRIPTION = "Charting spatial ligand-target activity using Renoir"
 
 # Setting up

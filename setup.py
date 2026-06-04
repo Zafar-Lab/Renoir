@@ -33,6 +33,8 @@ setup(
             "spatialdata",
             "spatialdata-io",
             "spatialdata-plot",
+            "igraph",
+            "leidenalg",
         ]
     },
 )

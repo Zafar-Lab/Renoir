@@ -2,8 +2,7 @@ from setuptools import setup, find_packages
 
 VERSION = "1.0.0"
 DESCRIPTION = (
-    "Charting spatial ligand-target activity using Renoir "
-    "(ligand-taRgEt iNteractions acrOss spatIal topogRaphy)"
+    "Charting spatial ligand-target activity using Renoir " "(ligand-taRgEt iNteractions acrOss spatIal topogRaphy)"
 )
 LONG_DESCRIPTION = open("README.md", encoding="utf-8").read()
 
@@ -17,8 +16,8 @@ setup(
     url="https://github.com/Zafar-Lab/Renoir",
     project_urls={
         "Documentation": "https://renoir.readthedocs.io/en/latest/",
-        "Bug Tracker":   "https://github.com/Zafar-Lab/Renoir/issues",
-        "Source Code":   "https://github.com/Zafar-Lab/Renoir",
+        "Bug Tracker": "https://github.com/Zafar-Lab/Renoir/issues",
+        "Source Code": "https://github.com/Zafar-Lab/Renoir",
     },
     packages=find_packages(),
     python_requires=">=3.9",

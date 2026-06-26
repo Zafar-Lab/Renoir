@@ -1,0 +1,16 @@
+# codecov.yml
+ignore:
+  - "setup.py"
+  - "docs/**"
+  - ".github/**"
+
+coverage:
+  status:
+    patch:
+      default:
+        target: auto      # compare against base branch instead of fixed target
+        threshold: 5%     # allow 5% drop in patch coverage
+    project:
+      default:
+        target: auto
+        threshold: 2%

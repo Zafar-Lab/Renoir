@@ -66,9 +66,10 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: coverage.xml
-          fail_ci_if_error: false   # don't fail CI if Codecov is down
+          files: ./coverage.xml
+          fail_ci_if_error: true   # don't fail CI if Codecov is down
           token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
 
   # ------------------------------------------------------------------------
   # Integration tests — run only on push to main (too slow for every PR)

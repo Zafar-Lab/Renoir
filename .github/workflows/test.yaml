@@ -68,6 +68,7 @@ jobs:
         with:
           files: coverage.xml
           fail_ci_if_error: false   # don't fail CI if Codecov is down
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # ------------------------------------------------------------------------
   # Integration tests — run only on push to main (too slow for every PR)

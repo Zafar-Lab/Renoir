@@ -1,14 +1,21 @@
 # Charting spatial ligand-target activity using Renoir
 
 <p align="center">
-<img src="https://github.com/Zafar-Lab/Renoir/blob/main/docs/source/_static/renoir_logo.png" alt="RENOIR" width="300"/>
+<img src="https://raw.githubusercontent.com/Zafar-Lab/Renoir/main/docs/source/_static/renoir_logo.png" alt="RENOIR" width="300"/>
 </p>
+
+[![Tests](https://github.com/Zafar-Lab/Renoir/actions/workflows/test.yaml/badge.svg)](https://github.com/Zafar-Lab/Renoir/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/Zafar-Lab/Renoir/graph/badge.svg)](https://app.codecov.io/gh/Zafar-Lab/Renoir)
+[![Docs](https://readthedocs.org/projects/renoir/badge/?version=latest)](https://renoir.readthedocs.io/en/latest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Renoir** is an information-theory-based scoring metric for quantifying the activity between a ligand and its target gene given a specific spatial context. Renoir can also infer spatial communication domains that harbor similar ligand-target activities. Renoir also identifies spatially enriched ligand-target gene sets (pathway activity) and characterizes domain-specific activities between ligands and targets.
 
 <p align="center">
-<img src="https://github.com/Zafar-Lab/Renoir/blob/main/docs/source/images/Overview.png" alt="Overview of RENOIR" width="600"/>
+<img src="https://raw.githubusercontent.com/Zafar-Lab/Renoir/main/docs/source/images/Overview.png" alt="Overview of RENOIR" width="600"/>
 </p>
+
+
 
 ## Requirements
 All requirements are provided in the ```renoir.yml``` file. It is recommended to utilize the same versions as provided in ```renoir.yml``` file.

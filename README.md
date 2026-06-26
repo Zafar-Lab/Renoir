@@ -26,6 +26,12 @@ This example walks through a complete Renoir workflow on a 10x Genomics Visium s
 
 ### Installation
 
+**Via: pip**
+```bash
+pip install Renoir
+```
+
+**Via: conda**
 ```bash
 conda env create -f renoir.yml
 pip install .

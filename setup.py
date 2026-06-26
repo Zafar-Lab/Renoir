@@ -7,7 +7,7 @@ DESCRIPTION = (
 LONG_DESCRIPTION = open("README.md", encoding="utf-8").read()
 
 setup(
-    name="Renoir",
+    name="renoir-spatial",
     version=VERSION,
     author="Narein Rao (Zafar-Lab)",
     description=DESCRIPTION,

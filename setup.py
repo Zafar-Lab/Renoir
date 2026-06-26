@@ -20,7 +20,7 @@ setup(
         "Source Code": "https://github.com/Zafar-Lab/Renoir",
     },
     packages=find_packages(),
-    python_requires=">=3.9",
+    python_requires=">=3.11",
     install_requires=[
         # ── Core scientific stack ─────────────────────────────────────────
         "numpy",

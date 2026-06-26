@@ -28,7 +28,7 @@ This example walks through a complete Renoir workflow on a 10x Genomics Visium s
 
 **Via: pip**
 ```bash
-pip install Renoir
+pip install renoir-spatial
 ```
 
 **Via: conda**
